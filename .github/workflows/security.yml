@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  security:
     runs-on: ubuntu-latest
 
     concurrency:
