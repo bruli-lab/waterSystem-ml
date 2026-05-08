@@ -83,7 +83,8 @@ func run() error {
 		return time.Now().In(loc)
 	})
 	executeSvc := watering.NewExecute(waterSystemExecutor, tracer)
-	appPredictionSvc := app.NewGetPrediction(predictionSvc, telegramPublisher, tracer, executeSvc)
+	systemStatusSvc := watering.NewSystemStatus(waterSystemExecutor)
+	appPredictionSvc := app.NewGetPrediction(predictionSvc, telegramPublisher, tracer, executeSvc, systemStatusSvc)
 
 	cronJob, err := buildCron()
 	if err != nil {

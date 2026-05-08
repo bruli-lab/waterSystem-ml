@@ -24,12 +24,63 @@ type ExecuteBody struct {
 	Seconds int `json:"seconds"`
 }
 
+type Status struct {
+	Active bool `json:"active"`
+}
+
 type Executor struct {
 	cl                *http.Client
 	tracer            trace.Tracer
 	host, port, token string
 	zones             map[string]string
 	logger            *slog.Logger
+}
+
+func (e *Executor) GetStatus(ctx context.Context) (*watering.Status, error) {
+	ctx, span := e.tracer.Start(ctx, "WaterSystem.GetStatus")
+	defer span.End()
+
+	url := fmt.Sprintf("%s:%s/status", e.host, e.port)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, fmt.Errorf("error creating request: %s", err)
+	}
+	req.Header.Add("Authorization", e.token)
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := e.cl.Do(req)
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, fmt.Errorf("error executing request: %s", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		err := fmt.Errorf("error executing request: %s", resp.Status)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "error executing request")
+		return nil, err
+	}
+	var status Status
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, fmt.Errorf("error reading response: %s", err)
+	}
+	if err := json.Unmarshal(body, &status); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, fmt.Errorf("error decoding response: %s", err)
+	}
+
+	span.SetStatus(codes.Ok, "OK")
+	return watering.NewStatus(status.Active), nil
 }
 
 func (e *Executor) Execute(ctx context.Context, w *watering.Watering) error {

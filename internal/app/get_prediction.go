@@ -11,10 +11,11 @@ import (
 )
 
 type GetPrediction struct {
-	predictionSvc *ml.GetPrediction
-	pub           Publisher
-	tracer        trace.Tracer
-	executeSvc    *watering.Execute
+	predictionSvc   *ml.GetPrediction
+	pub             Publisher
+	tracer          trace.Tracer
+	executeSvc      *watering.Execute
+	systemStatusSvc *watering.SystemStatus
 }
 
 func (p GetPrediction) Get(ctx context.Context) ([]ml.Prediction, error) {
@@ -28,16 +29,32 @@ func (p GetPrediction) Get(ctx context.Context) ([]ml.Prediction, error) {
 	}
 
 	for _, prediction := range predictions {
-		if prediction.ShouldWater() {
-			i, err := p.publishMessage(ctx, prediction, span)
-			if err != nil {
-				return i, err
-			}
-			if err := p.executeSvc.Execute(ctx, watering.New(prediction.Zone(), int(prediction.PredictedSeconds()))); err != nil {
+		if !prediction.ShouldWater() {
+			continue
+		}
+		i, err := p.publishMessage(ctx, prediction, span)
+		if err != nil {
+			return i, err
+		}
+		st, err := p.systemStatusSvc.GetStatus(ctx)
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			return i, err
+		}
+		if !st.Active() {
+			span.SetStatus(codes.Error, "system is not active")
+			if err := p.pub.Publish(ctx, "system is not active"); err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
 				return i, err
 			}
+			return nil, nil
+		}
+		if err := p.executeSvc.Execute(ctx, watering.New(prediction.Zone(), int(prediction.PredictedSeconds()))); err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			return i, err
 		}
 	}
 
@@ -60,6 +77,18 @@ func (p GetPrediction) publishMessage(ctx context.Context, prediction ml.Predict
 	return nil, nil
 }
 
-func NewGetPrediction(svc *ml.GetPrediction, pub Publisher, tracer trace.Tracer, executeSvc *watering.Execute) *GetPrediction {
-	return &GetPrediction{predictionSvc: svc, pub: pub, tracer: tracer, executeSvc: executeSvc}
+func NewGetPrediction(
+	svc *ml.GetPrediction,
+	pub Publisher,
+	tracer trace.Tracer,
+	executeSvc *watering.Execute,
+	systemStatusSvc *watering.SystemStatus,
+) *GetPrediction {
+	return &GetPrediction{
+		predictionSvc:   svc,
+		pub:             pub,
+		tracer:          tracer,
+		executeSvc:      executeSvc,
+		systemStatusSvc: systemStatusSvc,
+	}
 }
