@@ -2,7 +2,7 @@ package ml
 
 var Humidities = map[string]*Humidity{
 	"Bonsai big":   NewHumidity(1.472, 1.300),
-	"Bonsai small": NewHumidity(1.646, 1.22),
+	"Bonsai small": NewHumidity(1.732, 1.22),
 }
 
 type Humidity struct {
