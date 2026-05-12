@@ -4,7 +4,6 @@ go 1.26.3
 
 require (
 	github.com/caarlos0/env/v11 v11.4.0
-	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/influxdata/influxdb-client-go/v2 v2.14.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.11.1

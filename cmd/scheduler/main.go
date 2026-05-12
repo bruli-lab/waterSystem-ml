@@ -13,9 +13,9 @@ import (
 	"github.com/bruli/watersystem-ml/internal/config"
 	"github.com/bruli/watersystem-ml/internal/domain/ml"
 	"github.com/bruli/watersystem-ml/internal/domain/watering"
-	telegram "github.com/bruli/watersystem-ml/internal/infra/Telegram"
 	httpinfra "github.com/bruli/watersystem-ml/internal/infra/http"
 	"github.com/bruli/watersystem-ml/internal/infra/influxdb2"
+	"github.com/bruli/watersystem-ml/internal/infra/ntfy"
 	"github.com/bruli/watersystem-ml/internal/infra/python"
 	"github.com/bruli/watersystem-ml/internal/infra/tracing"
 	watersystem "github.com/bruli/watersystem-ml/internal/infra/water_system"
@@ -61,9 +61,9 @@ func run() error {
 	duration := 30 * time.Minute
 	trainExecutor := python.NewTrainingExecutor(duration, conf.PythonPath, tracer, log)
 	predictionRepo := python.NewPredictionRepository(tracer, conf.PythonPath, duration)
-	telegramPublisher, err := telegram.NewMessagePublisher(conf.TelegramToken, conf.TelegramChatID, conf.IsProd())
+	ntfyPublisher, err := ntfy.NewPublisher(conf.NtfyUser, conf.NtfyPassword, conf.NtfyURL, conf.NtfyTopic, tracer)
 	if err != nil {
-		log.ErrorContext(ctx, "Error creating telegram publisher", "err", err)
+		log.ErrorContext(ctx, "Error creating ntfy publisher", "err", err)
 		return err
 	}
 	soilMeasureRepo := influxdb2.NewSoilMeasureRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
@@ -84,7 +84,7 @@ func run() error {
 	})
 	executeSvc := watering.NewExecute(waterSystemExecutor, tracer)
 	systemStatusSvc := watering.NewSystemStatus(waterSystemExecutor)
-	appPredictionSvc := app.NewGetPrediction(predictionSvc, telegramPublisher, tracer, executeSvc, systemStatusSvc)
+	appPredictionSvc := app.NewGetPrediction(predictionSvc, ntfyPublisher, tracer, executeSvc, systemStatusSvc)
 
 	cronJob, err := buildCron()
 	if err != nil {

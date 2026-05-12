@@ -6,8 +6,6 @@ type Config struct {
 	ServerHost       string `env:"SERVER_HOST,required"`
 	ModelDir         string `env:"MODEL_DIR,required"`
 	PythonPath       string `env:"PYTHON_PATH,required"`
-	TelegramToken    string `env:"TELEGRAM_TOKEN,required"`
-	TelegramChatID   int    `env:"TELEGRAM_CHAT_ID,required"`
 	Env              string `env:"ENV" envDefault:"PROD"`
 	InfluxDBURL      string `env:"INFLUXDB_URL,required"`
 	InfluxDBToken    string `env:"INFLUXDB_TOKEN,required"`
@@ -16,6 +14,11 @@ type Config struct {
 	WaterSystemHost  string `env:"WATER_SYSTEM_HOST,required"`
 	WaterSystemPort  string `env:"WATER_SYSTEM_PORT,required"`
 	WaterSystemToken string `env:"WATER_SYSTEM_TOKEN,required"`
+	LogLevel         string `env:"LOG_LEVEL,required"`
+	NtfyURL          string `env:"NTFY_URL,required"`
+	NtfyTopic        string `env:"NTFY_TOPIC,required"`
+	NtfyUser         string `env:"NTFY_USER,required"`
+	NtfyPassword     string `env:"NTFY_PASSWORD,required"`
 }
 
 func New() (*Config, error) {
