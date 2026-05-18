@@ -2,6 +2,7 @@ package ml
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -161,7 +162,7 @@ type GetPredictionError struct {
 }
 
 func (g GetPredictionError) Error() string {
-	return g.msg
+	return fmt.Sprintf("%s. Error: %s", g.msg, g.err.Error())
 }
 
 func (g GetPredictionError) Unwrap() error {
