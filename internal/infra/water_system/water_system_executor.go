@@ -120,7 +120,7 @@ func (e *Executor) Execute(ctx context.Context, w *watering.Watering) error {
 		return fmt.Errorf("error executing request: %s", err)
 	}
 
-	if resp.StatusCode != http.StatusAccepted {
+	if resp.StatusCode != http.StatusOK {
 		err := fmt.Errorf("error executing request: %s", resp.Status)
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "error executing request")
