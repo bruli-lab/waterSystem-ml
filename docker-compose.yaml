@@ -25,6 +25,10 @@ services:
         - NTFY_TOPIC=ws-ml
         - NTFY_USER=user
         - NTFY_PASSWORD=password
+        - BONSAI_BIG_V100=1.350
+        - BONSAI_BIG_V40=1.600
+        - BONSAI_SMALL_V100=1.350
+        - BONSAI_SMALL_V40=1.600
     depends_on:
       - influxdb
       - lgtm

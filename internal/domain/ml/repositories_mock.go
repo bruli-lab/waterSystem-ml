@@ -205,3 +205,75 @@ func (mock *ExecutionRepositoryMock) GetLastExecutionCalls() []struct {
 	mock.lockGetLastExecution.RUnlock()
 	return calls
 }
+
+// Ensure, that HumidityRepositoryMock does implement HumidityRepository.
+// If this is not the case, regenerate this file with moq.
+var _ HumidityRepository = &HumidityRepositoryMock{}
+
+// HumidityRepositoryMock is a mock implementation of HumidityRepository.
+//
+//	func TestSomethingThatUsesHumidityRepository(t *testing.T) {
+//
+//		// make and configure a mocked HumidityRepository
+//		mockedHumidityRepository := &HumidityRepositoryMock{
+//			GetByZoneFunc: func(ctx context.Context, zone string) (*Humidity, error) {
+//				panic("mock out the GetByZone method")
+//			},
+//		}
+//
+//		// use mockedHumidityRepository in code that requires HumidityRepository
+//		// and then make assertions.
+//
+//	}
+type HumidityRepositoryMock struct {
+	// GetByZoneFunc mocks the GetByZone method.
+	GetByZoneFunc func(ctx context.Context, zone string) (*Humidity, error)
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// GetByZone holds details about calls to the GetByZone method.
+		GetByZone []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Zone is the zone argument value.
+			Zone string
+		}
+	}
+	lockGetByZone sync.RWMutex
+}
+
+// GetByZone calls GetByZoneFunc.
+func (mock *HumidityRepositoryMock) GetByZone(ctx context.Context, zone string) (*Humidity, error) {
+	if mock.GetByZoneFunc == nil {
+		panic("HumidityRepositoryMock.GetByZoneFunc: method is nil but HumidityRepository.GetByZone was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Zone string
+	}{
+		Ctx:  ctx,
+		Zone: zone,
+	}
+	mock.lockGetByZone.Lock()
+	mock.calls.GetByZone = append(mock.calls.GetByZone, callInfo)
+	mock.lockGetByZone.Unlock()
+	return mock.GetByZoneFunc(ctx, zone)
+}
+
+// GetByZoneCalls gets all the calls that were made to GetByZone.
+// Check the length with:
+//
+//	len(mockedHumidityRepository.GetByZoneCalls())
+func (mock *HumidityRepositoryMock) GetByZoneCalls() []struct {
+	Ctx  context.Context
+	Zone string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Zone string
+	}
+	mock.lockGetByZone.RLock()
+	calls = mock.calls.GetByZone
+	mock.lockGetByZone.RUnlock()
+	return calls
+}

@@ -16,6 +16,7 @@ type GetPrediction struct {
 	predictionRepo  PredictionRepository
 	soilMeasureRepo SoilMeasureRepository
 	executionRepo   ExecutionRepository
+	humidityRepo    HumidityRepository
 	tracer          trace.Tracer
 	predictions     map[string]*Prediction
 	m               sync.Mutex
@@ -52,8 +53,8 @@ func (g *GetPrediction) Get(ctx context.Context) ([]Prediction, error) {
 			g.log.WarnContext(ctx, "no execution found", slog.String("zone", m.Zone()))
 			continue
 		}
-		hum, ok := Humidities[m.Zone()]
-		if !ok {
+		hum, err := g.humidityRepo.GetByZone(ctx, m.Zone())
+		if err != nil {
 			g.log.WarnContext(ctx, "unknown zone", slog.String("zone", m.Zone()))
 			continue
 		}
@@ -140,6 +141,7 @@ func NewGetPrediction(
 	predictionRepo PredictionRepository,
 	soilMeasureRepo SoilMeasureRepository,
 	executionRepo ExecutionRepository,
+	humidityRepo HumidityRepository,
 	tracer trace.Tracer,
 	log *slog.Logger,
 	timeFunc func() time.Time,
@@ -148,6 +150,7 @@ func NewGetPrediction(
 		predictionRepo:  predictionRepo,
 		soilMeasureRepo: soilMeasureRepo,
 		executionRepo:   executionRepo,
+		humidityRepo:    humidityRepo,
 		tracer:          tracer,
 		predictions:     make(map[string]*Prediction),
 		m:               sync.Mutex{},

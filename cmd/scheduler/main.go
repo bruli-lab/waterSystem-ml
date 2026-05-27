@@ -16,6 +16,7 @@ import (
 	"github.com/bruli/watersystem-ml/internal/domain/watering"
 	httpinfra "github.com/bruli/watersystem-ml/internal/infra/http"
 	"github.com/bruli/watersystem-ml/internal/infra/influxdb2"
+	"github.com/bruli/watersystem-ml/internal/infra/memory"
 	"github.com/bruli/watersystem-ml/internal/infra/ntfy"
 	"github.com/bruli/watersystem-ml/internal/infra/python"
 	"github.com/bruli/watersystem-ml/internal/infra/tracing"
@@ -73,9 +74,10 @@ func run() error {
 		return err
 	}
 	executionRepo := influxdb2.NewExecutionRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
+	humidityRepo := memory.NewHumidityRepository(conf.BonsaiBigV100, conf.BonsaiBigV40, conf.BonsaiSmallV100, conf.BonsaiSmallV40)
 
 	trainSvc := ml.NewTrain(trainExecutor, tracer)
-	predictionSvc := ml.NewGetPrediction(predictionRepo, soilMeasureRepo, executionRepo, tracer, log, func() time.Time {
+	predictionSvc := ml.NewGetPrediction(predictionRepo, soilMeasureRepo, executionRepo, humidityRepo, tracer, log, func() time.Time {
 		loc, err := time.LoadLocation("Europe/Madrid")
 		if err != nil {
 			log.ErrorContext(ctx, "Error loading location", "err", err)
