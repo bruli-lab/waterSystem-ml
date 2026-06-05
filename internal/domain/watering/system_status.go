@@ -3,15 +3,20 @@ package watering
 import "context"
 
 type Status struct {
-	active bool
+	active  bool
+	raining bool
+}
+
+func (s Status) Raining() bool {
+	return s.raining
 }
 
 func (s Status) Active() bool {
 	return s.active
 }
 
-func NewStatus(active bool) *Status {
-	return &Status{active: active}
+func NewStatus(active, raining bool) *Status {
+	return &Status{active: active, raining: raining}
 }
 
 type StatusRepository interface {

@@ -25,7 +25,8 @@ type ExecuteBody struct {
 }
 
 type Status struct {
-	Active bool `json:"active"`
+	Active    bool `json:"active"`
+	IsRaining bool `json:"is_raining"`
 }
 
 type Executor struct {
@@ -80,7 +81,7 @@ func (e *Executor) GetStatus(ctx context.Context) (*watering.Status, error) {
 	}
 
 	span.SetStatus(codes.Ok, "OK")
-	return watering.NewStatus(status.Active), nil
+	return watering.NewStatus(status.Active, status.IsRaining), nil
 }
 
 func (e *Executor) Execute(ctx context.Context, w *watering.Watering) error {

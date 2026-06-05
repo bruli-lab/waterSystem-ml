@@ -42,6 +42,10 @@ func (p GetPrediction) Get(ctx context.Context) ([]ml.Prediction, error) {
 			span.SetStatus(codes.Error, "system is not active")
 			return nil, nil
 		}
+		if st.Raining() {
+			span.SetStatus(codes.Error, "system is raining")
+			return nil, nil
+		}
 		i, err := p.publishMessage(ctx, prediction, span)
 		if err != nil {
 			return i, err
