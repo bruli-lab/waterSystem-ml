@@ -8,6 +8,10 @@ resources:
   - secret-ghcr.yaml
   - serviceaccount-default.yaml
   - pvc.yaml
+  - externalsecret-influxdb.yaml
+  - externalsecret-ntfy.yaml
+  - externalsecret-postgres.yaml
+  - externalsecret-watersystem.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: watersystem-ml
