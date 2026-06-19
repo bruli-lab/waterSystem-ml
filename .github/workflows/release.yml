@@ -43,6 +43,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -63,3 +65,16 @@ jobs:
           tags: |
             ghcr.io/bruli/watersystem-ml:v${{ needs.release.outputs.version }}
             ghcr.io/bruli/watersystem-ml:latest
+
+      - name: Update deployment image tag
+        run: |
+          VERSION=v${{ needs.release.outputs.version }}
+
+          sed -i "s|ghcr.io/bruli/watersystem-ml:.*|ghcr.io/bruli/watersystem-ml:${VERSION}|g" deployment.yaml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add deployment.yaml
+          git commit -m "chore: update image to ${VERSION}"
+          git push
