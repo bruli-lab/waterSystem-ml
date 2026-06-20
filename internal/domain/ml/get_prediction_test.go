@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bruli/go-core/ptr"
 	"github.com/bruli/watersystem-ml/internal/domain/ml"
-	"github.com/bruli/watersystem-ml/internal/ptr"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace/noop"
 )
