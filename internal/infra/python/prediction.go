@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/bruli/watersystem-ml/internal/domain/ml"
+	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -72,7 +73,7 @@ func buildPredictionsDomain(predictions []Prediction) []ml.Prediction {
 
 	for i := range predictions {
 		p := &predictions[i]
-		prediction := ml.NewPrediction(p.Zone, p.ShouldWater, p.PredictedSeconds, p.DecisionReason)
+		prediction := ml.NewPrediction(uuid.New(), p.Zone, p.ShouldWater, p.PredictedSeconds, p.DecisionReason, p.WateringProba)
 		pred[i] = *prediction
 	}
 	return pred

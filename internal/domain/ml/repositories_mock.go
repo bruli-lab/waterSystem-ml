@@ -206,28 +206,28 @@ func (mock *ExecutionRepositoryMock) GetLastExecutionCalls() []struct {
 	return calls
 }
 
-// Ensure, that HumidityRepositoryMock does implement HumidityRepository.
+// Ensure, that HumidityReferenceRepositoryMock does implement HumidityReferenceRepository.
 // If this is not the case, regenerate this file with moq.
-var _ HumidityRepository = &HumidityRepositoryMock{}
+var _ HumidityReferenceRepository = &HumidityReferenceRepositoryMock{}
 
-// HumidityRepositoryMock is a mock implementation of HumidityRepository.
+// HumidityReferenceRepositoryMock is a mock implementation of HumidityReferenceRepository.
 //
-//	func TestSomethingThatUsesHumidityRepository(t *testing.T) {
+//	func TestSomethingThatUsesHumidityReferenceRepository(t *testing.T) {
 //
-//		// make and configure a mocked HumidityRepository
-//		mockedHumidityRepository := &HumidityRepositoryMock{
-//			GetByZoneFunc: func(ctx context.Context, zone string) (*Humidity, error) {
+//		// make and configure a mocked HumidityReferenceRepository
+//		mockedHumidityReferenceRepository := &HumidityReferenceRepositoryMock{
+//			GetByZoneFunc: func(ctx context.Context, zone string) (*HumidityReference, error) {
 //				panic("mock out the GetByZone method")
 //			},
 //		}
 //
-//		// use mockedHumidityRepository in code that requires HumidityRepository
+//		// use mockedHumidityReferenceRepository in code that requires HumidityReferenceRepository
 //		// and then make assertions.
 //
 //	}
-type HumidityRepositoryMock struct {
+type HumidityReferenceRepositoryMock struct {
 	// GetByZoneFunc mocks the GetByZone method.
-	GetByZoneFunc func(ctx context.Context, zone string) (*Humidity, error)
+	GetByZoneFunc func(ctx context.Context, zone string) (*HumidityReference, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -243,9 +243,9 @@ type HumidityRepositoryMock struct {
 }
 
 // GetByZone calls GetByZoneFunc.
-func (mock *HumidityRepositoryMock) GetByZone(ctx context.Context, zone string) (*Humidity, error) {
+func (mock *HumidityReferenceRepositoryMock) GetByZone(ctx context.Context, zone string) (*HumidityReference, error) {
 	if mock.GetByZoneFunc == nil {
-		panic("HumidityRepositoryMock.GetByZoneFunc: method is nil but HumidityRepository.GetByZone was just called")
+		panic("HumidityReferenceRepositoryMock.GetByZoneFunc: method is nil but HumidityReferenceRepository.GetByZone was just called")
 	}
 	callInfo := struct {
 		Ctx  context.Context
@@ -263,8 +263,8 @@ func (mock *HumidityRepositoryMock) GetByZone(ctx context.Context, zone string) 
 // GetByZoneCalls gets all the calls that were made to GetByZone.
 // Check the length with:
 //
-//	len(mockedHumidityRepository.GetByZoneCalls())
-func (mock *HumidityRepositoryMock) GetByZoneCalls() []struct {
+//	len(mockedHumidityReferenceRepository.GetByZoneCalls())
+func (mock *HumidityReferenceRepositoryMock) GetByZoneCalls() []struct {
 	Ctx  context.Context
 	Zone string
 } {

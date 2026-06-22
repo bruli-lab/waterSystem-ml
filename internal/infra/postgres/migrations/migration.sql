@@ -1,45 +1,23 @@
-CREATE TABLE irrigation_predictions (
-                                        id UUID PRIMARY KEY,
-
-                                        zone_id TEXT NOT NULL,              -- bonsai_big, bonsai_small...
-                                        predicted_at TIMESTAMPTZ NOT NULL,
-
-    -- Estat del sensor en el moment de decidir
-                                        soil_moisture_percent NUMERIC(5,2),
-                                        soil_voltage NUMERIC(6,3),
-                                        root_temperature NUMERIC(5,2),
-                                        terrace_temperature NUMERIC(5,2),
-                                        is_raining BOOLEAN,
-
-    -- Dades meteorològiques previstes/usades pel model
-                                        forecast_temperature NUMERIC(5,2),
-                                        forecast_humidity NUMERIC(5,2),
-                                        forecast_precipitation NUMERIC(6,2),
-                                        forecast_cloud_cover NUMERIC(5,2),
-                                        forecast_shortwave NUMERIC(8,2),
-
-    -- Context calculat
-                                        days_since_last_watering NUMERIC(6,2),
-                                        drying_factor NUMERIC(8,4),
-                                        hour_of_day INT,
-                                        month INT,
-
-    -- Resultat del model
-                                        model_version TEXT NOT NULL,
-                                        should_water BOOLEAN NOT NULL,
-                                        predicted_seconds INT,
-                                        probability NUMERIC(6,4),
-
-    -- Decisió final aplicada pel sistema
-                                        decision_reason TEXT,               -- below_40, above_60, ml_prediction, night_blocked...
-                                        executed BOOLEAN NOT NULL DEFAULT false,
-                                        executed_seconds INT,
-
-    -- Resultat posterior per validar
-                                        moisture_before NUMERIC(5,2),
-                                        moisture_after_30m NUMERIC(5,2),
-                                        moisture_after_2h NUMERIC(5,2),
-                                        moisture_after_24h NUMERIC(5,2),
-
-                                        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE model_predictions
+(
+    id                UUID PRIMARY KEY,
+    created_at        TIMESTAMPTZ      NOT NULL,
+    zone              TEXT             NOT NULL,
+    should_water      BOOLEAN          NOT NULL,
+    predicted_seconds DOUBLE PRECISION NOT NULL,
+    decision_reason   TEXT             NOT NULL,
+    moisture_before   DOUBLE PRECISION NOT NULL,
+    watering_executed BOOLEAN          NOT NULL,
+    validation_at     TIMESTAMPTZ,
+    validation_status TEXT NOT NULL DEFAULT,
+    moisture_after    DOUBLE PRECISION,
+    target_moisture   DOUBLE PRECISION NOT NULL,
+    reached_target    BOOLEAN
 );
+
+CREATE UNIQUE INDEX ux_model_predictions_one_pending_per_zone
+    ON model_predictions (zone)
+    WHERE validation_at IS NULL;
+
+CREATE INDEX idx_model_predictions_zone_created_at
+    ON model_predictions (zone, created_at DESC);

@@ -74,7 +74,7 @@ func run() error {
 		return err
 	}
 	executionRepo := influxdb2.NewExecutionRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
-	humidityRepo := memory.NewHumidityRepository(conf.BonsaiBigV100, conf.BonsaiBigV40, conf.BonsaiSmallV100, conf.BonsaiSmallV40)
+	humidityRepo := memory.NewHumidityReferenceRepository(conf.BonsaiBigV100, conf.BonsaiBigV40, conf.BonsaiSmallV100, conf.BonsaiSmallV40)
 
 	trainSvc := ml.NewTrain(trainExecutor, tracer)
 	predictionSvc := ml.NewGetPrediction(predictionRepo, soilMeasureRepo, executionRepo, humidityRepo, tracer, log, func() time.Time {

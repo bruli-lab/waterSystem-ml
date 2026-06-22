@@ -2,7 +2,7 @@ package ml
 
 import "context"
 
-//go:generate go tool moq -out repositories_mock.go . PredictionRepository SoilMeasureRepository ExecutionRepository HumidityRepository
+//go:generate go tool moq -out repositories_mock.go . PredictionRepository SoilMeasureRepository ExecutionRepository HumidityReferenceRepository
 type PredictionRepository interface {
 	Get(ctx context.Context) ([]Prediction, error)
 }
@@ -15,6 +15,6 @@ type ExecutionRepository interface {
 	GetLastExecution(ctx context.Context) (Executions, error)
 }
 
-type HumidityRepository interface {
-	GetByZone(ctx context.Context, zone string) (*Humidity, error)
+type HumidityReferenceRepository interface {
+	GetByZone(ctx context.Context, zone string) (*HumidityReference, error)
 }

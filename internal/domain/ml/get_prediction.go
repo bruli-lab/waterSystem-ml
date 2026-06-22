@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -16,7 +17,7 @@ type GetPrediction struct {
 	predictionRepo  PredictionRepository
 	soilMeasureRepo SoilMeasureRepository
 	executionRepo   ExecutionRepository
-	humidityRepo    HumidityRepository
+	humidityRepo    HumidityReferenceRepository
 	tracer          trace.Tracer
 	predictions     map[string]*Prediction
 	m               sync.Mutex
@@ -71,7 +72,7 @@ func (g *GetPrediction) Get(ctx context.Context) ([]Prediction, error) {
 				span.SetStatus(codes.Ok, "recently executed")
 				continue
 			}
-			pred := NewPrediction(m.Zone(), true, 20, "Low humidity")
+			pred := NewPrediction(uuid.New(), m.Zone(), true, 20, "Low humidity", 0)
 			result = append(result, *pred)
 		case hum.IsHigh(humidity):
 			continue
@@ -141,7 +142,7 @@ func NewGetPrediction(
 	predictionRepo PredictionRepository,
 	soilMeasureRepo SoilMeasureRepository,
 	executionRepo ExecutionRepository,
-	humidityRepo HumidityRepository,
+	humidityRepo HumidityReferenceRepository,
 	tracer trace.Tracer,
 	log *slog.Logger,
 	timeFunc func() time.Time,
