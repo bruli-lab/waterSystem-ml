@@ -3,7 +3,7 @@ module github.com/bruli/watersystem-ml
 go 1.26.4
 
 require (
-	github.com/bruli/go-core v1.3.0
+	github.com/bruli/go-core v1.5.1
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/google/uuid v1.6.0
 	github.com/influxdata/influxdb-client-go/v2 v2.14.0

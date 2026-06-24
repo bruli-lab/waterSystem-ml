@@ -8,6 +8,10 @@ github.com/aymanbagabas/go-udiff v0.2.0/go.mod h1:RE4Ex0qsGkTAJoQdQQCA0uG+nAzJO/
 github.com/bmatcuk/doublestar v1.1.1/go.mod h1:UD6OnuiIn0yFxxA2le/rnRU1G4RaI4UvFv1sNto9p6w=
 github.com/bruli/go-core v1.3.0 h1:PpYeofRdyhxBFbwdrDAw7dsoBn7T0YavWitsuRzIChY=
 github.com/bruli/go-core v1.3.0/go.mod h1:4KvQI0tXSg2aGTQdsYpCpX6xTlVjIr+PmndrmS3wEJU=
+github.com/bruli/go-core v1.5.0 h1:ca+05Ubm8AHFjOA7NVe4BhwFiHD9Sm7UvbGFJmrnzlY=
+github.com/bruli/go-core v1.5.0/go.mod h1:4KvQI0tXSg2aGTQdsYpCpX6xTlVjIr+PmndrmS3wEJU=
+github.com/bruli/go-core v1.5.1 h1:uoHPdJAJXv2VGMojHjYD2zuqI54qs8BjIo5gMjZnWOg=
+github.com/bruli/go-core v1.5.1/go.mod h1:4KvQI0tXSg2aGTQdsYpCpX6xTlVjIr+PmndrmS3wEJU=
 github.com/caarlos0/env/v11 v11.4.0 h1:Kcb6t5kIIr4XkoQC9AF2j+8E1Jsrl3Wz/hhm1LtoGAc=
 github.com/caarlos0/env/v11 v11.4.0/go.mod h1:qupehSf/Y0TUTsxKywqRt/vJjN5nz6vauiYEUUr8P4U=
 github.com/cenkalti/backoff/v5 v5.0.3 h1:ZN+IMa753KfX5hd8vVaMixjnqRZ3y8CuJKRKj1xcsSM=

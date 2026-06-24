@@ -10,14 +10,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/bruli/go-core/cqs"
+	"github.com/bruli/go-core/event"
 	"github.com/bruli/watersystem-ml/internal/app"
 	"github.com/bruli/watersystem-ml/internal/config"
 	"github.com/bruli/watersystem-ml/internal/domain/ml"
-	"github.com/bruli/watersystem-ml/internal/domain/watering"
 	httpinfra "github.com/bruli/watersystem-ml/internal/infra/http"
 	"github.com/bruli/watersystem-ml/internal/infra/influxdb2"
 	"github.com/bruli/watersystem-ml/internal/infra/memory"
-	"github.com/bruli/watersystem-ml/internal/infra/ntfy"
 	"github.com/bruli/watersystem-ml/internal/infra/python"
 	"github.com/bruli/watersystem-ml/internal/infra/tracing"
 	watersystem "github.com/bruli/watersystem-ml/internal/infra/water_system"
@@ -62,11 +62,11 @@ func run() error {
 	duration := 30 * time.Minute
 	trainExecutor := python.NewTrainingExecutor(duration, conf.PythonPath, tracer, log)
 	predictionRepo := python.NewPredictionRepository(tracer, conf.PythonPath, duration)
-	ntfyPublisher, err := ntfy.NewPublisher(conf.NtfyUser, conf.NtfyPassword, conf.NtfyURL, conf.NtfyTopic, tracer)
-	if err != nil {
-		log.ErrorContext(ctx, "Error creating ntfy publisher", "err", err)
-		return err
-	}
+	//ntfyPublisher, err := ntfy.NewPublisher(conf.NtfyUser, conf.NtfyPassword, conf.NtfyURL, conf.NtfyTopic, tracer)
+	//if err != nil {
+	//	log.ErrorContext(ctx, "Error creating ntfy publisher", "err", err)
+	//	return err
+	//}
 	soilMeasureRepo := influxdb2.NewSoilMeasureRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
 	waterSystemExecutor, err := watersystem.NewExecutor(ctx, 5*time.Second, tracer, conf.WaterSystemHost, conf.WaterSystemPort, conf.WaterSystemToken, log)
 	if err != nil {
@@ -77,16 +77,21 @@ func run() error {
 	humidityRepo := memory.NewHumidityReferenceRepository(conf.BonsaiBigV100, conf.BonsaiBigV40, conf.BonsaiSmallV100, conf.BonsaiSmallV40)
 
 	trainSvc := ml.NewTrain(trainExecutor, tracer)
-	predictionSvc := ml.NewGetPrediction(predictionRepo, soilMeasureRepo, executionRepo, humidityRepo, tracer, log, func() time.Time {
+	// executeSvc := watering.NewExecute(waterSystemExecutor, tracer)
+	calculateSvc := ml.NewCalculate(predictionRepo, soilMeasureRepo, humidityRepo, executionRepo, waterSystemExecutor, tracer, func() time.Time {
 		loc, err := time.LoadLocation("Europe/Madrid")
 		if err != nil {
 			log.ErrorContext(ctx, "Error loading location", "err", err)
 		}
 		return time.Now().In(loc)
 	})
-	executeSvc := watering.NewExecute(waterSystemExecutor, tracer)
-	systemStatusSvc := watering.NewSystemStatus(waterSystemExecutor)
-	appPredictionSvc := app.NewGetPrediction(predictionSvc, ntfyPublisher, tracer, executeSvc, systemStatusSvc)
+	eventBus := event.NewBus()
+
+	logChMiddleware := cqs.NewCommandHndErrorMiddleware(log, tracer)
+	listenerMdw := cqs.NewCommandHandlerEventBusMiddleware(new(eventBus), tracer)
+	multiCHMdw := cqs.CommandHandlerMultiMiddleware(logChMiddleware, listenerMdw)
+
+	calculateWatCh := multiCHMdw(app.NewCalculateWatering(calculateSvc))
 
 	cronJob, err := buildCron()
 	if err != nil {
@@ -104,7 +109,7 @@ func run() error {
 			ch <- err
 		}
 	}(errCh)
-	go runPrediction(ctx, log, appPredictionSvc)
+	go runCalculateWatering(ctx, log, calculateWatCh)
 
 	serverListener, err := net.Listen("tcp", conf.ServerHost)
 	log.InfoContext(ctx, "Starting server", "host", conf.ServerHost)
@@ -190,7 +195,7 @@ func checkDir(path string) (exists, empty bool, err error) {
 	return true, true, nil
 }
 
-func runPrediction(ctx context.Context, log *slog.Logger, svc *app.GetPrediction) {
+func runCalculateWatering(ctx context.Context, log *slog.Logger, ch cqs.CommandHandler) {
 	tick := time.NewTicker(15 * time.Minute)
 	defer tick.Stop()
 
@@ -200,20 +205,8 @@ func runPrediction(ctx context.Context, log *slog.Logger, svc *app.GetPrediction
 			return
 		case <-tick.C:
 			runCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
-			predictions, err := svc.Get(runCtx)
+			_, _ = ch.Handle(runCtx, app.CalculateWateringCommand{})
 			cancel()
-			if err != nil {
-				log.ErrorContext(ctx, "Error running prediction", slog.String("error", err.Error()))
-				continue
-			}
-			for _, pr := range predictions {
-				log.InfoContext(ctx, "prediction found",
-					slog.String("zone", pr.Zone()),
-					slog.Bool("should_water", pr.ShouldWater()),
-					slog.String("decision_reason", pr.DecisionReason()),
-					slog.Float64("predicted_seconds", pr.PredictedSeconds()),
-				)
-			}
 		}
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/bruli/watersystem-ml/internal/domain/ml"
 	"github.com/bruli/watersystem-ml/internal/domain/watering"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -37,7 +38,7 @@ type Executor struct {
 	logger            *slog.Logger
 }
 
-func (e *Executor) GetStatus(ctx context.Context) (*watering.Status, error) {
+func (e *Executor) GetStatus(ctx context.Context) (*ml.Status, error) {
 	ctx, span := e.tracer.Start(ctx, "WaterSystem.GetStatus")
 	defer span.End()
 
@@ -81,7 +82,7 @@ func (e *Executor) GetStatus(ctx context.Context) (*watering.Status, error) {
 	}
 
 	span.SetStatus(codes.Ok, "OK")
-	return watering.NewStatus(status.Active, status.IsRaining), nil
+	return ml.NewStatus(status.Active, status.IsRaining), nil
 }
 
 func (e *Executor) Execute(ctx context.Context, w *watering.Watering) error {
