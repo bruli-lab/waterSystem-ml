@@ -27,12 +27,17 @@ type CalculatedWatering struct {
 	isRaining       bool
 	systemActivated bool
 	executions      Executions
-	calculated      bool
+	calculatedZones map[string]bool
 	timeFunc        func() time.Time
 }
 
 func (c *CalculatedWatering) Calculated() bool {
-	return c.calculated
+	for _, calc := range c.calculatedZones {
+		if !calc {
+			return false
+		}
+	}
+	return true
 }
 
 func (c *CalculatedWatering) allowedFromSystem(zone string, currentHumidity float64) (bool, error) {
@@ -56,6 +61,9 @@ func (c *CalculatedWatering) allowedFromSystem(zone string, currentHumidity floa
 }
 
 func (c *CalculatedWatering) FromPrediction(pred *Prediction, zh *ZoneHumidity) {
+	if c.calculatedZones[pred.Zone()] {
+		return
+	}
 	now := c.timeFunc().Hour()
 	if now > 22 || now <= 8 {
 		c.Record(NewWateringSystemSkippedEvent(IsNightRangeReason))
@@ -86,19 +94,24 @@ func NewCalculatedWatering(
 	exec Executions,
 	zonesHumidity []*ZoneHumidity,
 ) (*CalculatedWatering, error) {
+	calcZones := make(map[string]bool)
+	for _, zone := range zonesHumidity {
+		calcZones[zone.Zone()] = false
+	}
 	cp := CalculatedWatering{
 		isRaining:       isRaining,
 		systemActivated: systemActivated,
 		executions:      exec,
 		timeFunc:        timeFunc,
+		calculatedZones: calcZones,
 	}
 	for _, zh := range zonesHumidity {
 		switch {
 		case zh.HumidityReference().IsHigh(zh.CurrentHumidity()):
 			cp.Record(NewWateringZoneSkippedEvent(zh.Zone(), AboveMaxThresholdReason, zh.CurrentHumidity(), nil, nil, nil))
-			cp.calculated = true
+			cp.calculatedZones[zh.Zone()] = true
 		case zh.HumidityReference().IsLow(zh.CurrentHumidity()):
-			cp.calculated = true
+			cp.calculatedZones[zh.Zone()] = true
 			allowed, err := cp.allowedFromSystem(zh.Zone(), zh.CurrentHumidity())
 			if err != nil {
 				return nil, err
