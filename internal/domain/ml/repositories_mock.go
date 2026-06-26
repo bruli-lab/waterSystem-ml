@@ -343,3 +343,75 @@ func (mock *StatusRepositoryMock) GetStatusCalls() []struct {
 	mock.lockGetStatus.RUnlock()
 	return calls
 }
+
+// Ensure, that PredictionLogRepositoryMock does implement PredictionLogRepository.
+// If this is not the case, regenerate this file with moq.
+var _ PredictionLogRepository = &PredictionLogRepositoryMock{}
+
+// PredictionLogRepositoryMock is a mock implementation of PredictionLogRepository.
+//
+//	func TestSomethingThatUsesPredictionLogRepository(t *testing.T) {
+//
+//		// make and configure a mocked PredictionLogRepository
+//		mockedPredictionLogRepository := &PredictionLogRepositoryMock{
+//			SaveFunc: func(ctx context.Context, pl *PredictionLog) error {
+//				panic("mock out the Save method")
+//			},
+//		}
+//
+//		// use mockedPredictionLogRepository in code that requires PredictionLogRepository
+//		// and then make assertions.
+//
+//	}
+type PredictionLogRepositoryMock struct {
+	// SaveFunc mocks the Save method.
+	SaveFunc func(ctx context.Context, pl *PredictionLog) error
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// Save holds details about calls to the Save method.
+		Save []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Pl is the pl argument value.
+			Pl *PredictionLog
+		}
+	}
+	lockSave sync.RWMutex
+}
+
+// Save calls SaveFunc.
+func (mock *PredictionLogRepositoryMock) Save(ctx context.Context, pl *PredictionLog) error {
+	if mock.SaveFunc == nil {
+		panic("PredictionLogRepositoryMock.SaveFunc: method is nil but PredictionLogRepository.Save was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Pl  *PredictionLog
+	}{
+		Ctx: ctx,
+		Pl:  pl,
+	}
+	mock.lockSave.Lock()
+	mock.calls.Save = append(mock.calls.Save, callInfo)
+	mock.lockSave.Unlock()
+	return mock.SaveFunc(ctx, pl)
+}
+
+// SaveCalls gets all the calls that were made to Save.
+// Check the length with:
+//
+//	len(mockedPredictionLogRepository.SaveCalls())
+func (mock *PredictionLogRepositoryMock) SaveCalls() []struct {
+	Ctx context.Context
+	Pl  *PredictionLog
+} {
+	var calls []struct {
+		Ctx context.Context
+		Pl  *PredictionLog
+	}
+	mock.lockSave.RLock()
+	calls = mock.calls.Save
+	mock.lockSave.RUnlock()
+	return calls
+}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -27,9 +28,10 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/robfig/cron/v3"
+	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/pgdialect"
 	"go.opentelemetry.io/otel"
 )
 
@@ -51,17 +53,22 @@ func run() error {
 	}
 	log := buildLog(conf.LogLevel)
 
-	db, err := sqlx.Connect("postgres", conf.PostgresDataSource())
+	sqlDB, err := sql.Open("postgres", conf.PostgresDataSource())
 	if err != nil {
 		log.ErrorContext(ctx, "Error connecting to database", "err", err)
 	}
 	defer func() {
-		_ = db.Close()
+		_ = sqlDB.Close()
 	}()
-	if err := runPostgresMigrations(db); err != nil {
+	if err := runPostgresMigrations(sqlDB); err != nil {
 		log.ErrorContext(ctx, "Error running postgres migrations", "err", err)
 		return err
 	}
+
+	db := bun.NewDB(sqlDB, pgdialect.New())
+	defer func() {
+		_ = db.Close()
+	}()
 
 	tracingProv, err := tracing.InitTracing(ctx, serviceName)
 	if err != nil {
@@ -176,8 +183,8 @@ func run() error {
 	return nil
 }
 
-func runPostgresMigrations(db *sqlx.DB) error {
-	driver, err := postgres.WithInstance(db.DB, &postgres.Config{})
+func runPostgresMigrations(db *sql.DB) error {
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
 		return err
 	}
