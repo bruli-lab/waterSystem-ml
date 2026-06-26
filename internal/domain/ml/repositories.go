@@ -26,3 +26,7 @@ type StatusRepository interface {
 type WateringSkippedLogRepository interface {
 	Save(ctx context.Context, skp *WateringSkippedLog) error
 }
+
+type PredictionLogRepository interface {
+	Save(ctx context.Context, pl *PredictionLog) error
+}
