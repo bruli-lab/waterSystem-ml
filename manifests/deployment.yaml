@@ -95,7 +95,7 @@ spec:
             - name: BONSAI_SMALL_V40
               value: "1.801"
             - name: POSTGRES_DATABASE
-              value: watering_ml
+              value: watersystem_ml
             - name: POSTGRES_HOST
               value: postgres.postgres.svc.cluster.local
             - name: POSTGRES_PORT
