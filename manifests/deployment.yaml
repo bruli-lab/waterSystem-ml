@@ -97,7 +97,7 @@ spec:
             - name: POSTGRES_DATABASE
               value: watering_ml
             - name: POSTGRES_HOST
-              value: XXX
+              value: postgres.postgres.svc.cluster.local
             - name: POSTGRES_PORT
               value: "5432"
             - name: POSTGRES_USER
