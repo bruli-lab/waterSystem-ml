@@ -41,8 +41,8 @@ func (h HumidityReference) InRange(v float64) bool {
 	return v <= h.LowHumidity() && v >= h.HighHumidity()
 }
 
-func (h HumidityReference) TargetMoisture() float64 {
-	return h.v100 * 0.9
+func (h HumidityReference) TargetMoistureVoltage() float64 {
+	return h.voltageForPercentage(90)
 }
 
 func NewHumidityReference(v40, v100 float64) *HumidityReference {
