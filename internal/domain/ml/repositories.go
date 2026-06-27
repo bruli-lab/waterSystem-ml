@@ -22,3 +22,7 @@ type HumidityReferenceRepository interface {
 type StatusRepository interface {
 	GetStatus(ctx context.Context) (*Status, error)
 }
+
+type WateringSkippedLogRepository interface {
+	Save(ctx context.Context, skp *WateringSkippedLog) error
+}

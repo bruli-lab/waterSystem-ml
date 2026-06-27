@@ -25,9 +25,7 @@ func (p PublishMessageOnWateringRequested) Listen(ctx context.Context, ev event.
 	message += fmt.Sprintf("seconds: %v\n", wr.Seconds)
 	message += fmt.Sprintf("reason: %s\n", ptr.FromPointer(wr.DecisionReason))
 	message += fmt.Sprintf("soil moisture: %v\n", wr.MoistureBefore)
-	if _, err := p.ch.Handle(ctx, app.PublishMessageCommand{Message: message}); err != nil {
-		return fmt.Errorf("error publishing message: %w", err)
-	}
+	_, _ = p.ch.Handle(ctx, app.PublishMessageCommand{Message: message})
 	return nil
 }
 

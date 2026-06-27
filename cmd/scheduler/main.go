@@ -78,6 +78,7 @@ func run() error {
 	}
 	executionRepo := influxdb2.NewExecutionRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
 	humidityRepo := memory.NewHumidityReferenceRepository(conf.BonsaiBigV100, conf.BonsaiBigV40, conf.BonsaiSmallV100, conf.BonsaiSmallV40)
+	waterSkippedLogRepo := influxdb2.NewWateringSkippedLogRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
 
 	trainSvc := ml.NewTrain(trainExecutor, tracer)
 	executeSvc := watering.NewExecute(waterSystemExecutor, tracer)
@@ -88,15 +89,19 @@ func run() error {
 		}
 		return time.Now().In(loc)
 	})
+	saveWaterSkipLogSvc := ml.NewSaveWateringSkippedLog(waterSkippedLogRepo)
+
 	logChMiddleware := cqs.NewCommandHndErrorMiddleware(log, tracer)
 
 	commandBus := cqs.NewCommandBus()
 	commandBus.Subscribe(app.ExecuteWateringCommandName, logChMiddleware(app.NewExecuteWatering(executeSvc)))
 	execWatOnWaterSysList := listener.NewExecuteWateringOnWateringRequested(commandBus)
 	publishMsgList := listener.NewPublishMessageOnWateringRequested(commandBus)
+	saveWaterSkippedLogList := listener.NewSaveWateringSkippedLogOnWateringZoneSkipped(commandBus)
 
 	eventBus := event.NewBus()
 	eventBus.Subscribe(ml.WateringRequestedEventName, publishMsgList, execWatOnWaterSysList)
+	eventBus.Subscribe(ml.WateringZoneSkippedEventName, saveWaterSkippedLogList)
 
 	listenerMdw := cqs.NewCommandHandlerEventBusMiddleware(new(eventBus), tracer)
 	multiCHMdw := cqs.CommandHandlerMultiMiddleware(logChMiddleware, listenerMdw)
@@ -104,6 +109,7 @@ func run() error {
 	commandBus.Subscribe(app.CalculateWateringEventName, multiCHMdw(app.NewCalculateWatering(calculateSvc)))
 	commandBus.Subscribe(app.WateringZoneCommandName, logChMiddleware(app.NewWateringZone(executeSvc, tracer)))
 	commandBus.Subscribe(app.PublishMessageCommandName, logChMiddleware(app.NewPublishMessage(ntfyPublisher, tracer)))
+	commandBus.Subscribe(app.SaveWateringSkippedLogCommandName, logChMiddleware(app.NewSaveWateringSkippedLog(saveWaterSkipLogSvc, tracer)))
 
 	cronJob, err := buildCron()
 	if err != nil {

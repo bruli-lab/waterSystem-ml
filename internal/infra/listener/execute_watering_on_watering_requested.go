@@ -19,12 +19,10 @@ func (e ExecuteWateringOnWateringRequested) Listen(ctx context.Context, ev event
 	if !ok {
 		return fmt.Errorf("invalid event type: %T", ev)
 	}
-	if _, err := e.ch.Handle(ctx, app.ExecuteWateringCommand{
+	_, _ = e.ch.Handle(ctx, app.ExecuteWateringCommand{
 		Zone:    swr.Zone,
 		Seconds: int(swr.Seconds),
-	}); err != nil {
-		return fmt.Errorf("error executing watering: %w", err)
-	}
+	})
 	return nil
 }
 
