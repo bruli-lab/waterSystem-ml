@@ -94,6 +94,22 @@ spec:
               value: "1.35"
             - name: BONSAI_SMALL_V40
               value: "1.801"
+            - name: POSTGRES_DATABASE
+              value: watering_ml
+            - name: POSTGRES_HOST
+              value: XXX
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              valueFrom:
+                  secretKeyRef:
+                      name: postgres-secret
+                      key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                  secretKeyRef:
+                      name: postgres-secret
+                      key: POSTGRES_PASSWORD
 
         readinessProbe:
             httpGet: { path: /healthz, port: http }
