@@ -9,7 +9,7 @@ import (
 type WateringSkippedLog struct {
 	zone           *string
 	reason         string
-	moisture       float64
+	moisture       *float64
 	predictionID   *uuid.UUID
 	decisionReason *string
 	wateringProba  *float64
@@ -28,7 +28,7 @@ func (w *WateringSkippedLog) Reason() string {
 	return w.reason
 }
 
-func (w *WateringSkippedLog) Moisture() float64 {
+func (w *WateringSkippedLog) Moisture() *float64 {
 	return w.moisture
 }
 
@@ -47,7 +47,7 @@ func (w *WateringSkippedLog) WateringProba() *float64 {
 func NewWateringSkippedLog(
 	zone *string,
 	reason string,
-	moisture float64,
+	moisture *float64,
 	predictionID *uuid.UUID,
 	decisionReason *string,
 	wateringProba *float64,

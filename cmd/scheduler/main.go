@@ -97,11 +97,13 @@ func run() error {
 	commandBus.Subscribe(app.ExecuteWateringCommandName, logChMiddleware(app.NewExecuteWatering(executeSvc)))
 	execWatOnWaterSysList := listener.NewExecuteWateringOnWateringRequested(commandBus)
 	publishMsgList := listener.NewPublishMessageOnWateringRequested(commandBus)
-	saveWaterSkippedLogList := listener.NewSaveWateringSkippedLogOnWateringZoneSkipped(commandBus)
+	saveWaterSkippedLogWZList := listener.NewSaveWateringSkippedLogOnWateringZoneSkipped(commandBus)
+	saveWaterSkippedLogWSList := listener.NewSaveWateringSkippedLogOnWateringSystemSkipped(commandBus)
 
 	eventBus := event.NewBus()
 	eventBus.Subscribe(ml.WateringRequestedEventName, publishMsgList, execWatOnWaterSysList)
-	eventBus.Subscribe(ml.WateringZoneSkippedEventName, saveWaterSkippedLogList)
+	eventBus.Subscribe(ml.WateringZoneSkippedEventName, saveWaterSkippedLogWZList)
+	eventBus.Subscribe(ml.WateringSystemSkippedEventName, saveWaterSkippedLogWSList)
 
 	listenerMdw := cqs.NewCommandHandlerEventBusMiddleware(new(eventBus), tracer)
 	multiCHMdw := cqs.CommandHandlerMultiMiddleware(logChMiddleware, listenerMdw)

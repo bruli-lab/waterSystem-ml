@@ -22,7 +22,7 @@ func (s SaveWateringSkippedLogOnWateringZoneSkipped) Listen(ctx context.Context,
 	_, _ = s.ch.Handle(ctx, &app.SaveWateringSkippedLogCommand{
 		Zone:           new(wzk.Zone),
 		Reason:         wzk.Reason,
-		Moisture:       wzk.Moisture,
+		Moisture:       new(wzk.Moisture),
 		PredictionID:   wzk.PredictionID,
 		DecisionReason: wzk.DecisionReason,
 		WateringProba:  wzk.WateringProba,

@@ -30,8 +30,10 @@ func (w WateringSkippedLogRepository) Save(ctx context.Context, skp *ml.Watering
 		tags["zone"] = *skp.Zone()
 	}
 	fields := map[string]any{
-		"count":    1,
-		"moisture": skp.Moisture(),
+		"count": 1,
+	}
+	if skp.Moisture() != nil {
+		fields["moisture"] = *skp.Moisture()
 	}
 	if skp.WateringProba() != nil {
 		fields["watering_proba"] = *skp.WateringProba()

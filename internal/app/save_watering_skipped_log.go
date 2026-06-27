@@ -17,7 +17,7 @@ const SaveWateringSkippedLogCommandName = "save_watering_skipped_log"
 type SaveWateringSkippedLogCommand struct {
 	Zone           *string
 	Reason         string
-	Moisture       float64
+	Moisture       *float64
 	PredictionID   *uuid.UUID
 	DecisionReason *string
 	WateringProba  *float64
