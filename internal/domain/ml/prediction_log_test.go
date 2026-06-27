@@ -137,7 +137,7 @@ func TestPredictionLog_AddValidation(t *testing.T) {
 			name: "with a low moisture after, then it returns a failed status",
 			args: args{
 				at:            new(time.Now()),
-				moistureAfter: new(float64(8)),
+				moistureAfter: new(float64(12)),
 			},
 			expectedStatus: ml.PredictionLogStatusFailed,
 		},
@@ -145,7 +145,7 @@ func TestPredictionLog_AddValidation(t *testing.T) {
 			name: "with a high moisture after, then it returns a success status",
 			args: args{
 				at:            new(time.Now()),
-				moistureAfter: new(float64(15)),
+				moistureAfter: new(float64(8)),
 			},
 			expectedStatus: ml.PredictionLogStatusSuccess,
 		},
@@ -154,7 +154,7 @@ func TestPredictionLog_AddValidation(t *testing.T) {
 		t.Run(`Given a built PredictionLog,
 		when AddValidation method is called `+tt.name, func(t *testing.T) {
 			t.Parallel()
-			l := fixtures.PredictionLogBuilder{}.Build(t)
+			l := fixtures.PredictionLogBuilder{MoistureBefore: new(float64(15))}.Build(t)
 			l.AddValidation(tt.args.at, tt.args.moistureAfter)
 			require.Equal(t, tt.args.at, l.ValidationAt())
 			require.Equal(t, tt.args.moistureAfter, l.MoistureAfter())

@@ -69,7 +69,7 @@ func (l *PredictionLog) ReachedTarget() *bool {
 		return nil
 	}
 	switch {
-	case *l.moistureAfter >= l.targetMoisture:
+	case *l.moistureAfter <= l.targetMoisture:
 		return new(true)
 	default:
 		return new(false)

@@ -96,6 +96,7 @@ func (p PredictionLogRepository) Save(ctx context.Context, pl *ml.PredictionLog)
 		Set("validation_at = EXCLUDED.validation_at").
 		Set("moisture_after = EXCLUDED.moisture_after").
 		Set("reached_target = EXCLUDED.reached_target").
+		Set("validation_status = EXCLUDED.validation_status").
 		Exec(ctx)
 	if err != nil {
 		span.RecordError(err)
