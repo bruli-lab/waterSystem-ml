@@ -22,7 +22,7 @@ type TrainingExecutor struct {
 	pythonPath string
 }
 
-func (t TrainingExecutor) Run(ctx context.Context) error {
+func (t TrainingExecutor) Run(ctx context.Context, _ string) error {
 	ctx, span := t.tracer.Start(ctx, "Training executor")
 	defer span.End()
 	output, err := runCommand(ctx, t.timeout, t.pythonPath, trainFile)

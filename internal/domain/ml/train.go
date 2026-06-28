@@ -12,10 +12,10 @@ type Train struct {
 	tracer   trace.Tracer
 }
 
-func (t *Train) Run(ctx context.Context) error {
+func (t *Train) Run(ctx context.Context, zone string) error {
 	ctx, span := t.tracer.Start(ctx, "Train")
 	defer span.End()
-	if err := t.executor.Run(ctx); err != nil {
+	if err := t.executor.Run(ctx, zone); err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return err

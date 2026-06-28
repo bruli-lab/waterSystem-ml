@@ -102,6 +102,7 @@ func run() error {
 	humidityRepo := memory.NewHumidityReferenceRepository(conf.BonsaiBigV100, conf.BonsaiBigV40, conf.BonsaiSmallV100, conf.BonsaiSmallV40)
 	waterSkippedLogRepo := influxdb2.NewWateringSkippedLogRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
 	predictionLogRepo := postgresinfra.NewPredictionLogRepository(db, tracer)
+	modelHealthRepo := postgresinfra.NewModelHealthRepository(db, tracer)
 
 	trainSvc := ml.NewTrain(trainExecutor, tracer)
 	executeSvc := watering.NewExecute(waterSystemExecutor, tracer)
@@ -115,6 +116,7 @@ func run() error {
 	saveWaterSkipLogSvc := ml.NewSaveWateringSkippedLog(waterSkippedLogRepo)
 	validatePredictionLogSvc := ml.NewValidatePrediction(soilMeasureRepo, predictionLogRepo, tracer)
 	savePredictionLogSvc := ml.NewSavePredictionLog(predictionLogRepo)
+	checkModelSvc := ml.NewCheckModel(modelHealthRepo, tracer)
 
 	logChMiddleware := cqs.NewCommandHndErrorMiddleware(log, tracer)
 
@@ -124,11 +126,15 @@ func run() error {
 	publishMsgList := listener.NewPublishMessageOnWateringRequested(commandBus)
 	saveWaterSkippedLogWZList := listener.NewSaveWateringSkippedLogOnWateringZoneSkipped(commandBus)
 	saveWaterSkippedLogWSList := listener.NewSaveWateringSkippedLogOnWateringSystemSkipped(commandBus)
+	checkModelPredValFailedList := listener.NewCheckModelOnPredictionValidationFailed(commandBus)
+	trainModelZoneModelDegradedList := listener.NewTrainModelOnZoneModelDegraded(commandBus)
 
 	eventBus := event.NewBus()
 	eventBus.Subscribe(ml.WateringRequestedEventName, publishMsgList, execWatOnWaterSysList)
 	eventBus.Subscribe(ml.WateringZoneSkippedEventName, saveWaterSkippedLogWZList)
 	eventBus.Subscribe(ml.WateringSystemSkippedEventName, saveWaterSkippedLogWSList)
+	eventBus.Subscribe(ml.PredictionValidationFailedEventName, checkModelPredValFailedList)
+	eventBus.Subscribe(ml.ZoneModelDegradedEventName, trainModelZoneModelDegradedList)
 
 	listenerMdw := cqs.NewCommandHandlerEventBusMiddleware(new(eventBus), tracer)
 	multiCHMdw := cqs.CommandHandlerMultiMiddleware(logChMiddleware, listenerMdw)
@@ -139,13 +145,15 @@ func run() error {
 	commandBus.Subscribe(app.SaveWateringSkippedLogCommandName, logChMiddleware(app.NewSaveWateringSkippedLog(saveWaterSkipLogSvc, tracer)))
 	commandBus.Subscribe(app.ValidatePredictionCommandName, multiCHMdw(app.NewValidatePrediction(validatePredictionLogSvc)))
 	commandBus.Subscribe(app.SavePredictionLogCommandName, logChMiddleware(app.NewSavePredictionLog(savePredictionLogSvc)))
+	commandBus.Subscribe(app.CheckFailedModelCommandName, multiCHMdw(app.NewCheckFailedModel(checkModelSvc)))
+	commandBus.Subscribe(app.TrainingZoneCommandName, logChMiddleware(app.NewTrainingZone(trainSvc)))
 
 	go runValidatePrediction(ctx, commandBus)
 
 	errCh := make(chan error)
 	defer close(errCh)
 
-	go initialTraining(ctx, conf, log, trainSvc)
+	go initialTraining(ctx, conf, log, commandBus)
 	go runCalculateWatering(ctx, commandBus)
 
 	serverListener, err := net.Listen("tcp", conf.ServerHost)
@@ -191,7 +199,7 @@ func runValidatePrediction(ctx context.Context, bus cqs.CommandBus) {
 	}
 }
 
-func initialTraining(ctx context.Context, conf *config.Config, log *slog.Logger, svc *ml.Train) {
+func initialTraining(ctx context.Context, conf *config.Config, log *slog.Logger, ch cqs.CommandHandler) {
 	exists, empty, err := checkDir(conf.ModelDir)
 	if err != nil {
 		log.ErrorContext(ctx, "Error checking model dir", "err", err)
@@ -204,28 +212,16 @@ func initialTraining(ctx context.Context, conf *config.Config, log *slog.Logger,
 	}
 
 	log.InfoContext(ctx, "Model dir is empty or does not exist, run initial training")
-	executeTraining(ctx, log, svc)
+	executeTraining(ctx, ch)
 }
 
-//nolint:gocritic
-//func trainingCron(ctx context.Context, log *slog.Logger, c *cron.Cron, svc *ml.Train) error {
-//	defer c.Stop()
-//	_, err := c.AddFunc("* 3 * * *", func() {
-//		executeTraining(ctx, log, svc)
-//	})
-//	if err != nil {
-//		return err
-//	}
-//	log.InfoContext(ctx, "Training cron started")
-//	c.Start()
-//	<-ctx.Done()
-//	log.InfoContext(ctx, "Training cron stopped")
-//	return nil
-//}
-
-func executeTraining(ctx context.Context, log *slog.Logger, svc *ml.Train) {
-	if err := svc.Run(ctx); err != nil {
-		log.ErrorContext(ctx, "Error running training", slog.String("error", err.Error()))
+func executeTraining(ctx context.Context, svc cqs.CommandHandler) {
+	zones := []string{
+		"Bonsai big",
+		"Bonsai small",
+	}
+	for _, zone := range zones {
+		_, _ = svc.Handle(ctx, app.TrainingZoneCommand{Zone: zone})
 	}
 }
 
