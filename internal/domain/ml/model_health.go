@@ -20,6 +20,10 @@ func (m *ModelHealth) totalPredictions() int {
 	return m.successfulPredictions + m.failedPredictions
 }
 
+func (m *ModelHealth) isCompleted() bool {
+	return m.totalPredictions() == 20
+}
+
 func (m *ModelHealth) failureRate() float64 {
 	total := m.totalPredictions()
 	if total == 0 {
@@ -38,7 +42,7 @@ func (m *ModelHealth) isDegraded() bool {
 }
 
 func (m *ModelHealth) Check() {
-	if m.isDegraded() {
+	if m.isCompleted() && m.isDegraded() {
 		m.Record(NewZoneModelDegradedEvent(m.zone))
 	}
 }
