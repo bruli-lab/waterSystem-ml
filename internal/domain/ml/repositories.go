@@ -39,3 +39,7 @@ type PredictionLogRepository interface {
 type ModelHealthRepository interface {
 	GetModelHealth(ctx context.Context, zone string) (*ModelHealth, error)
 }
+
+type ModelTrainingLogRepository interface {
+	Save(ctx context.Context, zone string, at time.Time) error
+}

@@ -17,7 +17,6 @@ func (t TrainModelOnZoneModelDegraded) Listen(ctx context.Context, ev event.Even
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
-
 	}
 	zmd, ok := ev.(*ml.ZoneModelDegradedEvent)
 	if !ok {

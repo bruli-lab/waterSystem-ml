@@ -104,6 +104,7 @@ func run() error {
 	waterSkippedLogRepo := influxdb2.NewWateringSkippedLogRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
 	predictionLogRepo := postgresinfra.NewPredictionLogRepository(db, tracer)
 	modelHealthRepo := postgresinfra.NewModelHealthRepository(db, tracer)
+	modelTrainingRepo := influxdb2.NewModelTrainingLogRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
 
 	trainSvc := ml.NewTrain(trainExecutor, tracer)
 	executeSvc := watering.NewExecute(waterSystemExecutor, tracer)
@@ -115,6 +116,7 @@ func run() error {
 	validatePredictionLogSvc := ml.NewValidatePrediction(soilMeasureRepo, predictionLogRepo, tracer)
 	savePredictionLogSvc := ml.NewSavePredictionLog(predictionLogRepo)
 	checkModelSvc := ml.NewCheckModel(modelHealthRepo, tracer)
+	saveModelTrainingSvc := ml.NewSaveModelTrainingLog(modelTrainingRepo)
 
 	trainCh := make(chan struct{ Zone string })
 	defer close(trainCh)
@@ -129,13 +131,14 @@ func run() error {
 	saveWaterSkippedLogWSList := listener.NewSaveWateringSkippedLogOnWateringSystemSkipped(commandBus)
 	checkModelPredValFailedList := listener.NewCheckModelOnPredictionValidationFailed(commandBus)
 	trainModelZoneModelDegradedList := listener.NewTrainModelOnZoneModelDegraded(trainCh)
+	saveModelTrainLogZoneModelDegradedList := listener.NewSaveModelTrainingLogOnZoneModelDegraded(commandBus)
 
 	eventBus := event.NewBus()
 	eventBus.Subscribe(ml.WateringRequestedEventName, publishMsgList, execWatOnWaterSysList)
 	eventBus.Subscribe(ml.WateringZoneSkippedEventName, saveWaterSkippedLogWZList)
 	eventBus.Subscribe(ml.WateringSystemSkippedEventName, saveWaterSkippedLogWSList)
 	eventBus.Subscribe(ml.PredictionValidationFailedEventName, checkModelPredValFailedList)
-	eventBus.Subscribe(ml.ZoneModelDegradedEventName, trainModelZoneModelDegradedList)
+	eventBus.Subscribe(ml.ZoneModelDegradedEventName, trainModelZoneModelDegradedList, saveModelTrainLogZoneModelDegradedList)
 
 	listenerMdw := cqs.NewCommandHandlerEventBusMiddleware(new(eventBus), tracer)
 	multiCHMdw := cqs.CommandHandlerMultiMiddleware(logChMiddleware, listenerMdw)
@@ -148,6 +151,7 @@ func run() error {
 	commandBus.Subscribe(app.SavePredictionLogCommandName, logChMiddleware(app.NewSavePredictionLog(savePredictionLogSvc)))
 	commandBus.Subscribe(app.CheckFailedModelCommandName, multiCHMdw(app.NewCheckFailedModel(checkModelSvc)))
 	commandBus.Subscribe(app.TrainingZoneCommandName, logChMiddleware(app.NewTrainingZone(trainSvc)))
+	commandBus.Subscribe(app.SaveModelTrainingLogCommandName, logChMiddleware(app.NewSaveModelTrainingLog(saveModelTrainingSvc)))
 
 	go runValidatePrediction(ctx, commandBus, log)
 
