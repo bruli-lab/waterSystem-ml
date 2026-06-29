@@ -2,7 +2,7 @@ package ml
 
 import "time"
 
-const WateringCoolDown = time.Hour * 2
+const WateringCoolDown = time.Minute * 90
 
 type Executions map[string]Execution
 
