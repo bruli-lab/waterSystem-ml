@@ -28,6 +28,11 @@ func (e ExecuteWateringOnWateringRequested) Listen(ctx context.Context, ev event
 		Zone:    swr.Zone,
 		Seconds: int(swr.Seconds),
 	}); err != nil {
+		defer func() {
+			_, _ = e.ch.Handle(ctx, app.PublishMessageCommand{
+				Message: fmt.Sprintf("error executing watering on zone %s: %s", swr.Zone, err.Error()),
+			})
+		}()
 		return fmt.Errorf("error executing watering: %w", err)
 	}
 	executed = true
