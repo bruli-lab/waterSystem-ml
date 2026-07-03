@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"time"
 
 	"github.com/bruli/go-core/cqs"
 	"github.com/bruli/go-core/event"
@@ -19,7 +20,8 @@ func (t TrainingZoneCommand) Name() string {
 }
 
 type TrainingZone struct {
-	svc *ml.Train
+	trainSvc *ml.Train
+	saveSvc  *ml.SaveModelTrainingState
 }
 
 func (t TrainingZone) Handle(ctx context.Context, cmd cqs.Command) ([]event.Event, error) {
@@ -27,9 +29,13 @@ func (t TrainingZone) Handle(ctx context.Context, cmd cqs.Command) ([]event.Even
 	if !ok {
 		return nil, cqs.NewInvalidCommandError(TrainingZoneCommandName, cmd.Name())
 	}
-	return nil, t.svc.Run(ctx, co.Zone)
+	if err := t.trainSvc.Run(ctx, co.Zone); err != nil {
+		return nil, err
+	}
+	ts := ml.NewModelTrainingState(co.Zone, time.Now())
+	return nil, t.saveSvc.Save(ctx, ts)
 }
 
-func NewTrainingZone(svc *ml.Train) *TrainingZone {
-	return &TrainingZone{svc: svc}
+func NewTrainingZone(trainSvc *ml.Train, saveSvc *ml.SaveModelTrainingState) *TrainingZone {
+	return &TrainingZone{trainSvc: trainSvc, saveSvc: saveSvc}
 }

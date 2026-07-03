@@ -105,8 +105,10 @@ func run() error {
 	predictionLogRepo := postgresinfra.NewPredictionLogRepository(db, tracer)
 	modelHealthRepo := postgresinfra.NewModelHealthRepository(db, tracer)
 	modelTrainingRepo := influxdb2.NewModelTrainingLogRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
+	modelTrainStateRepo := postgresinfra.NewModelTrainingStateRepository(db, tracer)
 
 	trainSvc := ml.NewTrain(trainExecutor, tracer)
+	saveTrainStateSvc := ml.NewSaveModelTrainingState(modelTrainStateRepo)
 	executeSvc := watering.NewExecute(waterSystemExecutor, tracer)
 	loc := buildTimeLocation(ctx, log)
 	calculateSvc := ml.NewCalculate(predictionRepo, soilMeasureRepo, humidityRepo, executionRepo, predictionLogRepo, waterSystemExecutor, tracer, func() time.Time {
@@ -150,7 +152,7 @@ func run() error {
 	commandBus.Subscribe(app.ValidatePredictionCommandName, multiCHMdw(app.NewValidatePrediction(validatePredictionLogSvc)))
 	commandBus.Subscribe(app.SavePredictionLogCommandName, logChMiddleware(app.NewSavePredictionLog(savePredictionLogSvc)))
 	commandBus.Subscribe(app.CheckFailedModelCommandName, multiCHMdw(app.NewCheckFailedModel(checkModelSvc)))
-	commandBus.Subscribe(app.TrainingZoneCommandName, logChMiddleware(app.NewTrainingZone(trainSvc)))
+	commandBus.Subscribe(app.TrainingZoneCommandName, logChMiddleware(app.NewTrainingZone(trainSvc, saveTrainStateSvc)))
 	commandBus.Subscribe(app.SaveModelTrainingLogCommandName, logChMiddleware(app.NewSaveModelTrainingLog(saveModelTrainingSvc)))
 
 	go runValidatePrediction(ctx, commandBus, log)

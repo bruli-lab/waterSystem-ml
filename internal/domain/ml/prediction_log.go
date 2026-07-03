@@ -21,6 +21,7 @@ var (
 	ErrInvalidPredictionLogMoistureBefore = errors.New("invalid prediction log moisture before")
 	ErrInvalidPredictionLogTargetMoisture = errors.New("invalid prediction log target moisture")
 	ErrPredictionLogNotFound              = errors.New("prediction log not found")
+	ErrModelPredictionStateNotFound       = errors.New("model prediction state not found")
 )
 
 type PredictionLogStatus string

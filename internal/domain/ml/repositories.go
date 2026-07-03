@@ -43,3 +43,8 @@ type ModelHealthRepository interface {
 type ModelTrainingLogRepository interface {
 	Save(ctx context.Context, zone string, at time.Time) error
 }
+
+type ModelTrainingStateRepository interface {
+	GetModelTrainingState(ctx context.Context, zone string) (*ModelTrainingState, error)
+	Save(ctx context.Context, state *ModelTrainingState) error
+}

@@ -10,11 +10,6 @@ vars:
   PIP: '{{.VENV}}/bin/pip'
   PY: '{{.VENV}}/bin/python'
 
-  IMAGE_REG: 'ghcr.io/bruli'
-  IMAGE_NAME: '{{.IMAGE_REG}}/{{.APP}}'
-  VERSION: '0.12.2'
-  CURRENT_IMAGE: '{{.IMAGE_NAME}}:{{.VERSION}}'
-
   GOLANGCI_LINT_VERSION: 'v2.11.4'
 
 silent: false
@@ -192,3 +187,13 @@ tasks:
       - security
       - lint
       - test
+
+  create-migration:
+      desc: Creating a new sql files for db migration
+      requires:
+          vars: [NAME]
+      cmds:
+        - |
+          set -euo pipefail
+          echo "Creating new migration files..."
+          go tool migrate create -ext sql -dir internal/infra/postgres/migrations -seq {{.NAME}}

@@ -30,3 +30,10 @@ type resultPrediction struct {
 	SuccessfulPredictions int `bun:"successful_predictions"`
 	FailedPredictions     int `bun:"failed_predictions"`
 }
+
+type modelTrainingState struct {
+	bun.BaseModel `bun:"table:model_training_state"`
+
+	Zone           string `bun:",pk"`
+	LastTrainingAt time.Time
+}

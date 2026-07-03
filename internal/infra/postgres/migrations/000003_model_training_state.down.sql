@@ -1,0 +1,1 @@
+DROP TABLE if exists model_training_state;
