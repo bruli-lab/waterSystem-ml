@@ -117,7 +117,7 @@ func run() error {
 	saveWaterSkipLogSvc := ml.NewSaveWateringSkippedLog(waterSkippedLogRepo)
 	validatePredictionLogSvc := ml.NewValidatePrediction(soilMeasureRepo, predictionLogRepo, tracer)
 	savePredictionLogSvc := ml.NewSavePredictionLog(predictionLogRepo)
-	checkModelSvc := ml.NewCheckModel(modelHealthRepo, tracer)
+	checkModelSvc := ml.NewCheckModel(modelHealthRepo, modelTrainStateRepo, tracer)
 	saveModelTrainingSvc := ml.NewSaveModelTrainingLog(modelTrainingRepo)
 
 	trainCh := make(chan struct{ Zone string }, 1)

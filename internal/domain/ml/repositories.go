@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-//go:generate go tool moq -out repositories_mock.go . PredictionRepository SoilMeasureRepository ExecutionRepository HumidityReferenceRepository StatusRepository PredictionLogRepository
+//go:generate go tool moq -out repositories_mock.go . PredictionRepository SoilMeasureRepository ExecutionRepository HumidityReferenceRepository StatusRepository PredictionLogRepository ModelTrainingStateRepository ModelHealthRepository
 type PredictionRepository interface {
 	Get(ctx context.Context) ([]Prediction, error)
 }

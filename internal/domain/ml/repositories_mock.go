@@ -516,3 +516,197 @@ func (mock *PredictionLogRepositoryMock) SaveCalls() []struct {
 	mock.lockSave.RUnlock()
 	return calls
 }
+
+// Ensure, that ModelTrainingStateRepositoryMock does implement ModelTrainingStateRepository.
+// If this is not the case, regenerate this file with moq.
+var _ ModelTrainingStateRepository = &ModelTrainingStateRepositoryMock{}
+
+// ModelTrainingStateRepositoryMock is a mock implementation of ModelTrainingStateRepository.
+//
+//	func TestSomethingThatUsesModelTrainingStateRepository(t *testing.T) {
+//
+//		// make and configure a mocked ModelTrainingStateRepository
+//		mockedModelTrainingStateRepository := &ModelTrainingStateRepositoryMock{
+//			GetModelTrainingStateFunc: func(ctx context.Context, zone string) (*ModelTrainingState, error) {
+//				panic("mock out the GetModelTrainingState method")
+//			},
+//			SaveFunc: func(ctx context.Context, state *ModelTrainingState) error {
+//				panic("mock out the Save method")
+//			},
+//		}
+//
+//		// use mockedModelTrainingStateRepository in code that requires ModelTrainingStateRepository
+//		// and then make assertions.
+//
+//	}
+type ModelTrainingStateRepositoryMock struct {
+	// GetModelTrainingStateFunc mocks the GetModelTrainingState method.
+	GetModelTrainingStateFunc func(ctx context.Context, zone string) (*ModelTrainingState, error)
+
+	// SaveFunc mocks the Save method.
+	SaveFunc func(ctx context.Context, state *ModelTrainingState) error
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// GetModelTrainingState holds details about calls to the GetModelTrainingState method.
+		GetModelTrainingState []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Zone is the zone argument value.
+			Zone string
+		}
+		// Save holds details about calls to the Save method.
+		Save []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// State is the state argument value.
+			State *ModelTrainingState
+		}
+	}
+	lockGetModelTrainingState sync.RWMutex
+	lockSave                  sync.RWMutex
+}
+
+// GetModelTrainingState calls GetModelTrainingStateFunc.
+func (mock *ModelTrainingStateRepositoryMock) GetModelTrainingState(ctx context.Context, zone string) (*ModelTrainingState, error) {
+	if mock.GetModelTrainingStateFunc == nil {
+		panic("ModelTrainingStateRepositoryMock.GetModelTrainingStateFunc: method is nil but ModelTrainingStateRepository.GetModelTrainingState was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Zone string
+	}{
+		Ctx:  ctx,
+		Zone: zone,
+	}
+	mock.lockGetModelTrainingState.Lock()
+	mock.calls.GetModelTrainingState = append(mock.calls.GetModelTrainingState, callInfo)
+	mock.lockGetModelTrainingState.Unlock()
+	return mock.GetModelTrainingStateFunc(ctx, zone)
+}
+
+// GetModelTrainingStateCalls gets all the calls that were made to GetModelTrainingState.
+// Check the length with:
+//
+//	len(mockedModelTrainingStateRepository.GetModelTrainingStateCalls())
+func (mock *ModelTrainingStateRepositoryMock) GetModelTrainingStateCalls() []struct {
+	Ctx  context.Context
+	Zone string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Zone string
+	}
+	mock.lockGetModelTrainingState.RLock()
+	calls = mock.calls.GetModelTrainingState
+	mock.lockGetModelTrainingState.RUnlock()
+	return calls
+}
+
+// Save calls SaveFunc.
+func (mock *ModelTrainingStateRepositoryMock) Save(ctx context.Context, state *ModelTrainingState) error {
+	if mock.SaveFunc == nil {
+		panic("ModelTrainingStateRepositoryMock.SaveFunc: method is nil but ModelTrainingStateRepository.Save was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		State *ModelTrainingState
+	}{
+		Ctx:   ctx,
+		State: state,
+	}
+	mock.lockSave.Lock()
+	mock.calls.Save = append(mock.calls.Save, callInfo)
+	mock.lockSave.Unlock()
+	return mock.SaveFunc(ctx, state)
+}
+
+// SaveCalls gets all the calls that were made to Save.
+// Check the length with:
+//
+//	len(mockedModelTrainingStateRepository.SaveCalls())
+func (mock *ModelTrainingStateRepositoryMock) SaveCalls() []struct {
+	Ctx   context.Context
+	State *ModelTrainingState
+} {
+	var calls []struct {
+		Ctx   context.Context
+		State *ModelTrainingState
+	}
+	mock.lockSave.RLock()
+	calls = mock.calls.Save
+	mock.lockSave.RUnlock()
+	return calls
+}
+
+// Ensure, that ModelHealthRepositoryMock does implement ModelHealthRepository.
+// If this is not the case, regenerate this file with moq.
+var _ ModelHealthRepository = &ModelHealthRepositoryMock{}
+
+// ModelHealthRepositoryMock is a mock implementation of ModelHealthRepository.
+//
+//	func TestSomethingThatUsesModelHealthRepository(t *testing.T) {
+//
+//		// make and configure a mocked ModelHealthRepository
+//		mockedModelHealthRepository := &ModelHealthRepositoryMock{
+//			GetModelHealthFunc: func(ctx context.Context, zone string) (*ModelHealth, error) {
+//				panic("mock out the GetModelHealth method")
+//			},
+//		}
+//
+//		// use mockedModelHealthRepository in code that requires ModelHealthRepository
+//		// and then make assertions.
+//
+//	}
+type ModelHealthRepositoryMock struct {
+	// GetModelHealthFunc mocks the GetModelHealth method.
+	GetModelHealthFunc func(ctx context.Context, zone string) (*ModelHealth, error)
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// GetModelHealth holds details about calls to the GetModelHealth method.
+		GetModelHealth []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Zone is the zone argument value.
+			Zone string
+		}
+	}
+	lockGetModelHealth sync.RWMutex
+}
+
+// GetModelHealth calls GetModelHealthFunc.
+func (mock *ModelHealthRepositoryMock) GetModelHealth(ctx context.Context, zone string) (*ModelHealth, error) {
+	if mock.GetModelHealthFunc == nil {
+		panic("ModelHealthRepositoryMock.GetModelHealthFunc: method is nil but ModelHealthRepository.GetModelHealth was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Zone string
+	}{
+		Ctx:  ctx,
+		Zone: zone,
+	}
+	mock.lockGetModelHealth.Lock()
+	mock.calls.GetModelHealth = append(mock.calls.GetModelHealth, callInfo)
+	mock.lockGetModelHealth.Unlock()
+	return mock.GetModelHealthFunc(ctx, zone)
+}
+
+// GetModelHealthCalls gets all the calls that were made to GetModelHealth.
+// Check the length with:
+//
+//	len(mockedModelHealthRepository.GetModelHealthCalls())
+func (mock *ModelHealthRepositoryMock) GetModelHealthCalls() []struct {
+	Ctx  context.Context
+	Zone string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Zone string
+	}
+	mock.lockGetModelHealth.RLock()
+	calls = mock.calls.GetModelHealth
+	mock.lockGetModelHealth.RUnlock()
+	return calls
+}

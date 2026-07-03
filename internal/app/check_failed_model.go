@@ -31,6 +31,9 @@ func (c CheckFailedModel) Handle(ctx context.Context, cmd cqs.Command) ([]event.
 	if err != nil {
 		return nil, err
 	}
+	if mh == nil {
+		return nil, nil
+	}
 	return mh.Events(), nil
 }
 
