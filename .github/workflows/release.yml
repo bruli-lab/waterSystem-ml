@@ -81,6 +81,8 @@ jobs:
 
       - name: Scan repository
         run: |
+          set -euo pipefail
+
           trivy filesystem \
             --scanners vuln,misconfig,secret \
             --severity HIGH,CRITICAL \
@@ -91,6 +93,8 @@ jobs:
       - name: Generate SARIF report
         if: always()
         run: |
+          set -euo pipefail
+
           trivy filesystem \
             --scanners vuln,misconfig,secret \
             --severity HIGH,CRITICAL \
@@ -139,7 +143,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build:
-    name: Build and push image
+    name: Build, scan and push image
     needs: release
 
     if: >-
@@ -168,15 +172,55 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Build and push image
+      - name: Install Trivy
+        env:
+          TRIVY_VERSION: "0.69.3"
+        run: |
+          set -euo pipefail
+
+          curl -sfL \
+            https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sudo sh -s -- \
+                -b /usr/local/bin \
+                "v${TRIVY_VERSION}"
+
+          trivy --version
+
+      - name: Build image locally
         uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/arm64
-          push: true
+          load: true
+          push: false
           tags: |
             ghcr.io/bruli/watersystem-ml:v${{ needs.release.outputs.version }}
             ghcr.io/bruli/watersystem-ml:latest
+
+      - name: Scan final image
+        run: |
+          set -euo pipefail
+
+          trivy image \
+            --scanners vuln \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            "ghcr.io/bruli/watersystem-ml:v${{ needs.release.outputs.version }}"
+
+      - name: Push versioned image
+        run: |
+          set -euo pipefail
+
+          docker push \
+            "ghcr.io/bruli/watersystem-ml:v${{ needs.release.outputs.version }}"
+
+      - name: Push latest image
+        run: |
+          set -euo pipefail
+
+          docker push \
+            "ghcr.io/bruli/watersystem-ml:latest"
 
       - name: Update deployment image tag
         env:
