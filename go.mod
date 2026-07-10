@@ -1,12 +1,11 @@
 module github.com/bruli/watersystem-ml
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/bruli/go-core v1.6.0
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/golang-migrate/migrate/v4 v4.19.1
-	github.com/google/martian v2.1.0+incompatible
 	github.com/google/uuid v1.6.0
 	github.com/influxdata/influxdb-client-go/v2 v2.14.0
 	github.com/lib/pq v1.10.9
