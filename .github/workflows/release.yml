@@ -9,76 +9,112 @@ permissions:
   issues: write
   pull-requests: write
   packages: write
+  security-events: write
 
 env:
   DEPLOYMENT_FILE: manifests/deployment.yaml
 
 jobs:
   lint:
-      runs-on: ubuntu-latest
+    name: Lint
+    runs-on: ubuntu-latest
 
-      steps:
-          - name: Checkout
-            uses: actions/checkout@v5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
 
-          - name: Setup Go and Task
-            uses: ./.github/actions/setup-go-task
+      - name: Setup Go and Task
+        uses: ./.github/actions/setup-go-task
 
-          - name: Lint
-            run: task lint
+      - name: Lint
+        run: task lint
+
   security:
-      runs-on: ubuntu-latest
+    name: Security checks
+    runs-on: ubuntu-latest
 
-      steps:
-          - name: Checkout
-            uses: actions/checkout@v5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
 
-          - name: Setup Go and Task
-            uses: ./.github/actions/setup-go-task
+      - name: Setup Go and Task
+        uses: ./.github/actions/setup-go-task
 
-          - name: Security
-            run: task security
+      - name: Security
+        run: task security
+
   test:
-      runs-on: ubuntu-latest
+    name: Tests
+    runs-on: ubuntu-latest
 
-      steps:
-          - name: Checkout
-            uses: actions/checkout@v5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
 
-          - name: Setup Go and Task
-            uses: ./.github/actions/setup-go-task
+      - name: Setup Go and Task
+        uses: ./.github/actions/setup-go-task
 
-          - name: Tests
-            run: task test
-  snyk:
-      runs-on: ubuntu-latest
+      - name: Tests
+        run: task test
 
-      steps:
-          - name: Checkout
-            uses: actions/checkout@v5
+  trivy-filesystem:
+    name: Scan source and dependencies
+    runs-on: ubuntu-latest
 
-          - name: Setup Go and Task
-            uses: ./.github/actions/setup-go-task
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
 
-          - name: Install Snyk
-            run: npm install -g snyk
+      - name: Install Trivy
+        env:
+          TRIVY_VERSION: "0.69.3"
+        run: |
+          set -euo pipefail
 
-          - name: Authenticate Snyk
-            run: snyk auth "${{ secrets.SNYK_TOKEN }}"
+          curl -fsSLo trivy.tar.gz \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
 
-          - name: Scan dependencies
-            run: snyk test --severity-threshold=high
+          tar -xzf trivy.tar.gz trivy
+          sudo install -m 0755 trivy /usr/local/bin/trivy
 
-          - name: Scan source code
-            run: snyk code test --severity-threshold=high
+          trivy --version
+
+      - name: Scan repository
+        run: |
+          trivy filesystem \
+            --scanners vuln,misconfig,secret \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            .
+
+      - name: Generate SARIF report
+        if: always()
+        run: |
+          trivy filesystem \
+            --scanners vuln,misconfig,secret \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --format sarif \
+            --output trivy-results.sarif \
+            .
+
+      - name: Upload results to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-filesystem
 
   release:
+    name: Semantic release
     needs:
-        - lint
-        - security
-        - test
+      - lint
+      - security
+      - test
+      - trivy-filesystem
 
-    if: ${{ github.ref == 'refs/heads/main' }}
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     outputs:
@@ -86,11 +122,13 @@ jobs:
       version: ${{ steps.semantic.outputs.new_release_version }}
 
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v5
+      - name: Setup Node
+        uses: actions/setup-node@v5
         with:
           node-version: 24
 
@@ -101,13 +139,22 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build:
+    name: Build and push image
     needs: release
-    if: ${{ github.ref == 'refs/heads/main' && needs.release.outputs.released == 'true' }}
 
-    runs-on: [self-hosted, raspberry, docker-builder, watersystem-ml]
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      needs.release.outputs.released == 'true'
+
+    runs-on:
+      - self-hosted
+      - raspberry
+      - docker-builder
+      - watersystem-ml
 
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout
+        uses: actions/checkout@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -132,14 +179,23 @@ jobs:
             ghcr.io/bruli/watersystem-ml:latest
 
       - name: Update deployment image tag
+        env:
+          VERSION: v${{ needs.release.outputs.version }}
         run: |
-          VERSION=v${{ needs.release.outputs.version }}
+          set -euo pipefail
 
-          sed -i "s|ghcr.io/bruli/watersystem-ml:.*|ghcr.io/bruli/watersystem-ml:${VERSION}|g" "${{ env.DEPLOYMENT_FILE }}"
+          sed -i \
+            "s|ghcr.io/bruli/watersystem-ml:[^[:space:]]*|ghcr.io/bruli/watersystem-ml:${VERSION}|g" \
+            "${DEPLOYMENT_FILE}"
+
+          if git diff --quiet -- "${DEPLOYMENT_FILE}"; then
+            echo "Deployment already references ${VERSION}"
+            exit 0
+          fi
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add "${{ env.DEPLOYMENT_FILE }}"
-          git commit -m "chore: update image to ${VERSION}"
+          git add "${DEPLOYMENT_FILE}"
+          git commit -m "chore: update image to ${VERSION} [skip ci]"
           git push

@@ -4,3 +4,4 @@ python/models/*
 .env
 tmp/
 coverage.out
+/manifests/secret-ghcr.yaml
