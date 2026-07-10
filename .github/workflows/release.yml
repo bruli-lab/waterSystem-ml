@@ -50,6 +50,27 @@ jobs:
 
           - name: Tests
             run: task test
+  snyk:
+      runs-on: ubuntu-latest
+
+      steps:
+          - name: Checkout
+            uses: actions/checkout@v5
+
+          - name: Setup Go and Task
+            uses: ./.github/actions/setup-go-task
+
+          - name: Install Snyk
+            run: npm install -g snyk
+
+          - name: Authenticate Snyk
+            run: snyk auth "${{ secrets.SNYK_TOKEN }}"
+
+          - name: Scan dependencies
+            run: snyk test --severity-threshold=high
+
+          - name: Scan source code
+            run: snyk code test --severity-threshold=high
 
   release:
     needs:
