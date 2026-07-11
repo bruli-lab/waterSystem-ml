@@ -1,6 +1,6 @@
 package ml
 
-import "github.com/bruli/go-core/event"
+import "github.com/bruli-lab/go-core/event"
 
 const DefaultMaxFailureRate = 0.35
 

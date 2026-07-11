@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/bruli-lab/go-core/event"
 	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
-	"github.com/bruli/go-core/event"
 )
 
 type TrainModelOnZoneModelDegraded struct {

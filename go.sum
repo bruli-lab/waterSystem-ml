@@ -741,8 +741,8 @@ github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 h1:DDGfHa7BWjL4Yn
 github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869/go.mod h1:Ekp36dRnpXw/yCqJaO+ZrUyxD+3VXMFFr56k5XYrpB4=
 github.com/boombuler/barcode v1.0.0/go.mod h1:paBWMcWSl3LHKBqUq+rly7CNSldXjb2rDl3JlRe0mD8=
 github.com/boombuler/barcode v1.0.1/go.mod h1:paBWMcWSl3LHKBqUq+rly7CNSldXjb2rDl3JlRe0mD8=
-github.com/bruli/go-core v1.6.0 h1:0Hk7StrmeOlZ5QGI2AuG401Xvn+w6zywKl3VBTInwDc=
-github.com/bruli/go-core v1.6.0/go.mod h1:4KvQI0tXSg2aGTQdsYpCpX6xTlVjIr+PmndrmS3wEJU=
+github.com/bruli-lab/go-core v1.7.0 h1:vOAfcnhZMNgUCYbWVWDHkXQgMCDyt74iEB2ZixHpw60=
+github.com/bruli-lab/go-core v1.7.0/go.mod h1:NrVGaVHAJJ2fxNS0kOwJc4VPLdi5VfJY08gQLNkhquk=
 github.com/caarlos0/env/v11 v11.4.0 h1:Kcb6t5kIIr4XkoQC9AF2j+8E1Jsrl3Wz/hhm1LtoGAc=
 github.com/caarlos0/env/v11 v11.4.0/go.mod h1:qupehSf/Y0TUTsxKywqRt/vJjN5nz6vauiYEUUr8P4U=
 github.com/cenkalti/backoff/v4 v4.1.2 h1:6Yo7N8UP2K6LWZnW94DLVSSrbobcWdVzAYOisuDPIFo=

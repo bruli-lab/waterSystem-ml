@@ -3,9 +3,9 @@ package app
 import (
 	"context"
 
+	"github.com/bruli-lab/go-core/cqs"
+	"github.com/bruli-lab/go-core/event"
 	"github.com/bruli-lab/watersystem-ml/internal/domain/watering"
-	"github.com/bruli/go-core/cqs"
-	"github.com/bruli/go-core/event"
 )
 
 const ExecuteWateringCommandName = "execute_watering"

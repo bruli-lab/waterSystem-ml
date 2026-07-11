@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bruli-lab/go-core/ptr"
 	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
-	"github.com/bruli/go-core/ptr"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"

@@ -3,8 +3,8 @@ package fixtures
 import (
 	"testing"
 
+	"github.com/bruli-lab/go-core/fixtures"
 	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
-	"github.com/bruli/go-core/fixtures"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )

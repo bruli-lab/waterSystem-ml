@@ -12,6 +12,8 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/bruli-lab/go-core/cqs"
+	"github.com/bruli-lab/go-core/event"
 	"github.com/bruli-lab/watersystem-ml/internal/app"
 	"github.com/bruli-lab/watersystem-ml/internal/config"
 	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
@@ -25,8 +27,6 @@ import (
 	"github.com/bruli-lab/watersystem-ml/internal/infra/python"
 	"github.com/bruli-lab/watersystem-ml/internal/infra/tracing"
 	watersystem "github.com/bruli-lab/watersystem-ml/internal/infra/water_system"
-	"github.com/bruli/go-core/cqs"
-	"github.com/bruli/go-core/event"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 	"github.com/uptrace/bun"

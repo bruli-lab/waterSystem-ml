@@ -1,7 +1,7 @@
 package ml
 
 import (
-	"github.com/bruli/go-core/event"
+	"github.com/bruli-lab/go-core/event"
 	"github.com/google/uuid"
 )
 

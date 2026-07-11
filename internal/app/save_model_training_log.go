@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/bruli-lab/go-core/cqs"
+	"github.com/bruli-lab/go-core/event"
 	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
-	"github.com/bruli/go-core/cqs"
-	"github.com/bruli/go-core/event"
 )
 
 const SaveModelTrainingLogCommandName = "save_model_training_log"

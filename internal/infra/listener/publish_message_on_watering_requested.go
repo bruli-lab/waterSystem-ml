@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/bruli-lab/go-core/cqs"
+	"github.com/bruli-lab/go-core/event"
+	"github.com/bruli-lab/go-core/ptr"
 	"github.com/bruli-lab/watersystem-ml/internal/app"
 	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
-	"github.com/bruli/go-core/cqs"
-	"github.com/bruli/go-core/event"
-	"github.com/bruli/go-core/ptr"
 )
 
 type PublishMessageOnWateringRequested struct {
