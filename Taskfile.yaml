@@ -10,7 +10,7 @@ vars:
   PIP: '{{.VENV}}/bin/pip'
   PY: '{{.VENV}}/bin/python'
 
-  GOLANGCI_LINT_VERSION: 'v2.11.4'
+  GOLANGCI_LINT_VERSION: 'v2.12.2'
 
 silent: false
 
