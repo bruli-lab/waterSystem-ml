@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bruli/watersystem-ml/internal/domain/ml"
+	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
 	"github.com/stretchr/testify/require"
 )
 

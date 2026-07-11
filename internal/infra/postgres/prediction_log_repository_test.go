@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bruli/watersystem-ml/internal/domain/ml"
-	"github.com/bruli/watersystem-ml/internal/fixtures"
-	"github.com/bruli/watersystem-ml/internal/infra/postgres"
+	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
+	"github.com/bruli-lab/watersystem-ml/internal/fixtures"
+	"github.com/bruli-lab/watersystem-ml/internal/infra/postgres"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"

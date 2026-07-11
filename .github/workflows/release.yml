@@ -154,7 +154,6 @@ jobs:
       - self-hosted
       - raspberry
       - docker-builder
-      - watersystem-ml
 
     steps:
       - name: Checkout

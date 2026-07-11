@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
 	"github.com/bruli/go-core/ptr"
-	"github.com/bruli/watersystem-ml/internal/domain/ml"
 	influxdb "github.com/influxdata/influxdb-client-go/v2"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"

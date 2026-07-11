@@ -3,9 +3,9 @@ package app
 import (
 	"context"
 
+	"github.com/bruli-lab/watersystem-ml/internal/domain/watering"
 	"github.com/bruli/go-core/cqs"
 	"github.com/bruli/go-core/event"
-	"github.com/bruli/watersystem-ml/internal/domain/watering"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )

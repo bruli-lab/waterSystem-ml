@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bruli/watersystem-ml/internal/domain/ml"
-	"github.com/bruli/watersystem-ml/internal/domain/watering"
+	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
+	"github.com/bruli-lab/watersystem-ml/internal/domain/watering"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/bruli/watersystem-ml/internal/domain/ml"
+	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
 	"github.com/uptrace/bun"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"

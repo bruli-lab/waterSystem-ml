@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bruli/watersystem-ml/internal/domain/ml"
+	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"

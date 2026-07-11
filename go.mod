@@ -1,4 +1,4 @@
-module github.com/bruli/watersystem-ml
+module github.com/bruli-lab/watersystem-ml
 
 go 1.26.5
 

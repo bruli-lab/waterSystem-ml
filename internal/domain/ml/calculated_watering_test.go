@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
 	"github.com/bruli/go-core/event"
 	"github.com/bruli/go-core/ptr"
-	"github.com/bruli/watersystem-ml/internal/domain/ml"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )

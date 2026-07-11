@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/bruli-lab/watersystem-ml/internal/app"
+	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
 	"github.com/bruli/go-core/cqs"
 	"github.com/bruli/go-core/event"
 	"github.com/bruli/go-core/ptr"
-	"github.com/bruli/watersystem-ml/internal/app"
-	"github.com/bruli/watersystem-ml/internal/domain/ml"
 )
 
 type ExecuteWateringOnWateringRequested struct {

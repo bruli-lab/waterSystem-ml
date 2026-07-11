@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/bruli/watersystem-ml/internal/domain/ml"
+	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/schema"
 	"go.opentelemetry.io/otel/codes"
