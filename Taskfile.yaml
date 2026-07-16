@@ -178,7 +178,92 @@ tasks:
         set -euo pipefail
         echo "🧪 Running unit tests (race, JSON → tparse)..."
         go test -race ./... -json -cover -coverprofile=coverage.out | go tool tparse -all
+  mutant-test:
+    desc: Executa els mutation tests
+    cmds:
+      - |
+        set -euo pipefail
+        echo "🧪 Running mutant tests..."
+        report="$(mktemp)"
+        trap 'rm -f "$report"' EXIT
 
+        go tool gremlins unleash \
+          --output-statuses l \
+          --output "$report"
+
+        lived="$(jq -r '.mutants_lived' "$report")"
+
+        if [ "$lived" -gt 0 ]; then
+          echo "❌ $lived mutants are LIVED"
+          exit 1
+        fi
+
+        echo "✅ All mutants were KILLED"
+  mutant-debug:
+    desc: Mostra el codi dels mutants que sobreviuen
+    cmds:
+      - |
+        set -euo pipefail
+
+        report="$(mktemp)"
+        trap 'rm -f "$report"' EXIT
+
+        echo "🧬 Running mutation tests..."
+
+        go tool gremlins unleash \
+          --output-statuses l \
+          --output "$report"
+
+        jq -r '
+          .files[]
+          | .file_name as $file
+          | .mutations[]
+          | select(.status == "LIVED")
+          | [$file, .line, .column, .type]
+          | @tsv
+        ' "$report" |
+        while IFS=$'\t' read -r file line column type; do
+          start=$((line > 2 ? line - 2 : 1))
+          end=$((line + 2))
+
+          echo
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🧟 $type"
+          echo "📄 $file:$line:$column"
+          echo
+
+          nl -ba "$file" | sed -n "${start},${end}p"
+
+          echo
+          echo "Possible canvi:"
+
+          case "$type" in
+            CONDITIONALS_BOUNDARY)
+              echo "  >  ↔ >="
+              echo "  <  ↔ <="
+              ;;
+            CONDITIONALS_NEGATION)
+              echo "  == ↔ !="
+              echo "  >  ↔ <="
+              echo "  <  ↔ >="
+              ;;
+            ARITHMETIC_BASE)
+              echo "  + ↔ -"
+              echo "  * ↔ /"
+              echo "  % → *"
+              ;;
+          esac
+        done
+
+        lived="$(jq -r '.mutants_lived' "$report")"
+
+        if [ "$lived" -gt 0 ]; then
+          echo
+          echo "❌ Han sobreviscut $lived mutants"
+          exit 1
+        fi
+
+        echo "✅ No ha sobreviscut cap mutant"
   check:
     desc: Executing fmt, security, lint i test
     deps:

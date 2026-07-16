@@ -75,7 +75,7 @@ func TestNewPredictionLog(t *testing.T) {
 			expectedErr: ml.ErrInvalidPredictionLogTargetMoisture,
 		},
 		{
-			name: "with all values, then it returns an valid struct",
+			name: "with all values, then it returns an valid struct and event",
 			args: args{
 				id:               uuid.New(),
 				zone:             "zone",
@@ -108,6 +108,7 @@ func TestNewPredictionLog(t *testing.T) {
 			}
 			require.Equal(t, tt.args.id, got.Id())
 			require.False(t, got.CreatedAt().IsZero())
+			require.True(t, time.Now().Before(got.ValidateAfter()))
 			require.Equal(t, tt.args.zone, got.Zone())
 			require.Equal(t, tt.args.shouldWater, got.ShouldWater())
 			require.Equal(t, tt.args.predictedSeconds, got.PredictedSeconds())
