@@ -2,6 +2,8 @@ import argparse
 import json
 import math
 import os
+import sys
+import time
 
 import numpy as np
 import pandas as pd
@@ -14,6 +16,13 @@ MIN_SECONDS = 13.0
 MAX_SECONDS = 60.0
 DEFAULT_THRESHOLD = 0.30
 MODEL_DIR = os.getenv("MODEL_DIR", "./models")
+
+
+def checkpoint(message: str, started_at: float | None = None) -> float:
+    now = time.monotonic()
+    suffix = f" ({now - started_at:.2f}s)" if started_at is not None else ""
+    print(f"[prediction] {message}{suffix}", file=sys.stderr, flush=True)
+    return now
 
 
 def safe_predict_proba(clf, X_predict):
@@ -109,7 +118,7 @@ def build_no_model_result(zone: str) -> dict:
     return {
         "zone": zone,
         "should_water": False,
-        "decision_reason": "No hi ha model entrenat per a esta zona",
+        "decision_reason": "No trained model is available for this zone",
         "predicted_seconds": 0.0,
         "probability": 0.0,
         "used_model": False,
@@ -128,41 +137,52 @@ def build_error_result(zone: str, message: str) -> dict:
 
 
 def predict_zone(zone: str) -> dict:
+    zone_started_at = checkpoint(f"starting zone {zone}")
+
     if not zone_model_exists(zone):
+        checkpoint(f"zone {zone}: model unavailable", zone_started_at)
         return build_no_model_result(zone)
 
+    step_started_at = checkpoint(f"zone {zone}: loading model")
     try:
         clf, reg, metadata = load_models_for_zone(zone)
     except FileNotFoundError:
         return build_no_model_result(zone)
     except Exception as e:
-        return build_error_result(zone, f"Error carregant el model: {str(e)}")
+        return build_error_result(zone, f"Error loading model: {str(e)}")
+    checkpoint(f"zone {zone}: model loaded", step_started_at)
 
+    step_started_at = checkpoint(f"zone {zone}: loading prediction data")
     try:
         df = load_prediction_data(zone=zone, lookback="-30d")
     except Exception as e:
-        return build_error_result(zone, f"Error carregant dades de predicció: {str(e)}")
+        return build_error_result(zone, f"Error loading prediction data: {str(e)}")
+    checkpoint(f"zone {zone}: prediction data loaded", step_started_at)
 
     if df.empty:
-        return build_error_result(zone, "No hi ha dades de predicció disponibles")
+        return build_error_result(zone, "No prediction data is available")
 
+    step_started_at = checkpoint(f"zone {zone}: building features")
     try:
         X_predict, df_enriched = build_prediction_dataset(df, metadata)
     except Exception as e:
-        return build_error_result(zone, f"Error construint el dataset de predicció: {str(e)}")
+        return build_error_result(zone, f"Error building prediction dataset: {str(e)}")
+    checkpoint(f"zone {zone}: features built", step_started_at)
 
     if X_predict.empty:
-        return build_error_result(zone, "No hi ha features suficients per fer la predicció")
+        return build_error_result(zone, "There are not enough features to make a prediction")
 
     row = df_enriched.iloc[-1]
 
     if not row_has_valid_context_data(row):
-        return build_error_result(zone, "Falten dades de context (weather/forecast) per a la predicció")
+        return build_error_result(zone, "Weather/forecast context data is missing for prediction")
 
+    step_started_at = checkpoint(f"zone {zone}: calculating probability")
     try:
         proba = float(safe_predict_proba(clf, X_predict)[-1])
     except Exception as e:
-        return build_error_result(zone, f"Error calculant la probabilitat: {str(e)}")
+        return build_error_result(zone, f"Error calculating probability: {str(e)}")
+    checkpoint(f"zone {zone}: probability calculated", step_started_at)
 
     threshold = float(metadata.get("classification_threshold", DEFAULT_THRESHOLD))
     should_water = proba >= threshold
@@ -200,7 +220,7 @@ def predict_zone(zone: str) -> dict:
     if reasons:
         decision_reason += " | " + ", ".join(reasons)
 
-    return {
+    result = {
         "zone": zone,
         "should_water": bool(should_water),
         "decision_reason": decision_reason,
@@ -208,22 +228,31 @@ def predict_zone(zone: str) -> dict:
         "probability": proba,
         "used_model": True,
     }
+    checkpoint(f"finished zone {zone}", zone_started_at)
+    return result
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--zone", help="Prediu només una zona concreta")
+    parser.add_argument("--zone", help="Predict only a specific zone")
     parser.add_argument("--json", action="store_true", help="Força eixida JSON")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+    started_at = checkpoint("starting prediction")
 
     if args.zone:
         zones = [args.zone]
     else:
-        zones = load_available_zones(start="-180d")
+        zones_started_at = checkpoint("loading available zones")
+        try:
+            zones = load_available_zones(start="-180d")
+        except Exception as exc:
+            checkpoint(f"error loading zones: {exc}", zones_started_at)
+            raise
+        checkpoint(f"available zones: {', '.join(zones)}", zones_started_at)
 
     if not zones:
         print("[]")
@@ -235,6 +264,7 @@ def main():
     watering_results = [result for result in results if result.get("should_water") is True]
 
     print(json.dumps(watering_results, ensure_ascii=False, indent=2))
+    checkpoint("finished prediction", started_at)
 
 
 if __name__ == "__main__":
