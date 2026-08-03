@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import warnings
 from typing import Optional
 
@@ -14,6 +15,7 @@ INFLUXDB_URL = os.getenv("INFLUXDB_URL")
 INFLUXDB_TOKEN = os.getenv("INFLUXDB_TOKEN")
 INFLUXDB_ORG = os.getenv("INFLUXDB_ORG", "home")
 INFLUXDB_BUCKET = os.getenv("INFLUXDB_BUCKET", "bonsai-data")
+INFLUXDB_TIMEOUT_MS = int(os.getenv("INFLUXDB_TIMEOUT_MS", "15000"))
 
 SENSOR_MEASUREMENT_TO_ZONE = {
     "sensor.bonsai_big_bonsai_big_soil_moisture": "Bonsai big",
@@ -25,19 +27,36 @@ SENSOR_MEASUREMENT_TO_ZONE = {
 
 def _get_client() -> InfluxDBClient:
     if not INFLUXDB_URL or not INFLUXDB_TOKEN:
-        raise ValueError("Falten INFLUXDB_URL o INFLUXDB_TOKEN")
+        raise ValueError("INFLUXDB_URL or INFLUXDB_TOKEN is missing")
 
     return InfluxDBClient(
         url=INFLUXDB_URL,
         token=INFLUXDB_TOKEN,
         org=INFLUXDB_ORG,
+        timeout=INFLUXDB_TIMEOUT_MS,
     )
 
 
-def _query_to_df(query: str) -> pd.DataFrame:
+def _checkpoint(message: str) -> None:
+    print(f"[prediction] {message}", file=sys.stderr, flush=True)
+
+
+def _query_to_df(query: str, query_name: str = "influxdb") -> pd.DataFrame:
+    started_at = time.monotonic()
+    _checkpoint(f"starting {query_name} query")
+
     with _get_client() as client:
         query_api = client.query_api()
-        df = query_api.query_data_frame(query)
+        try:
+            df = query_api.query_data_frame(query)
+        except Exception as exc:
+            elapsed = time.monotonic() - started_at
+            raise RuntimeError(
+                f"{query_name} query failed after {elapsed:.2f}s: {exc}"
+            ) from exc
+
+    elapsed = time.monotonic() - started_at
+    _checkpoint(f"finished {query_name} query ({elapsed:.2f}s)")
 
     if isinstance(df, list):
         valid_dfs = [item for item in df if isinstance(item, pd.DataFrame) and not item.empty]
@@ -61,11 +80,7 @@ from(bucket: "{INFLUXDB_BUCKET}")
   |> distinct(column: "zone")
 '''
 
-    df = _query_to_df(query)
-
-    print("AVAILABLE ZONES DF:", file=sys.stderr)
-    print(df.head(), file=sys.stderr)
-    print("COLUMNS:", df.columns, file=sys.stderr)
+    df = _query_to_df(query, "available_zones")
 
     if df.empty:
         return []
@@ -104,7 +119,7 @@ from(bucket: "{INFLUXDB_BUCKET}")
   |> sort(columns: ["_time"])
 '''
 
-    df = _query_to_df(query)
+    df = _query_to_df(query, "logs")
 
     if df.empty:
         return pd.DataFrame(columns=["_time", "seconds", "zone"])
@@ -129,7 +144,7 @@ from(bucket: "{INFLUXDB_BUCKET}")
   |> sort(columns: ["_time"])
 '''
 
-    df = _query_to_df(query)
+    df = _query_to_df(query, "weather")
 
     if df.empty:
         return pd.DataFrame(columns=["_time", "temperature", "weather_is_raining_last"])
@@ -180,7 +195,7 @@ from(bucket: "{INFLUXDB_BUCKET}")
   |> sort(columns: ["_time"])
 '''
 
-    df = _query_to_df(query)
+    df = _query_to_df(query, "forecast")
 
     if df.empty:
         return pd.DataFrame(
@@ -263,7 +278,7 @@ from(bucket: "{INFLUXDB_BUCKET}")
   |> sort(columns: ["_time"])
 '''
 
-    df = _query_to_df(query)
+    df = _query_to_df(query, "soil_moisture")
 
     if df.empty:
         return pd.DataFrame(columns=["_time", "zone", "soil_moisture"])
@@ -296,7 +311,7 @@ from(bucket: "{INFLUXDB_BUCKET}")
   |> sort(columns: ["_time"])
 '''
 
-    df = _query_to_df(query)
+    df = _query_to_df(query, "soil_temperature")
 
     if df.empty:
         return pd.DataFrame(columns=["_time", "zone", "soil_temperature"])
@@ -443,13 +458,22 @@ def load_training_data(zone: Optional[str] = None, start: str = "-90d") -> pd.Da
 def load_prediction_data(zone: Optional[str] = None, lookback: str = "-30d") -> pd.DataFrame:
     # En predicció ja NO carreguem soil_moisture.
     # Go ja haurà decidit si toca cridar el model o no.
-    df_weather = load_weather_data(start=lookback)
+    # Weather, forecast i temperatura del substrat només necessiten el valor
+    # més recent. Limitar-los evita descarregar 30 dies de sèries denses en
+    # cada predicció. Els logs sí mantenen el lookback complet perquè s'usen
+    # per calcular el temps des de l'últim reg.
+    recent_context_lookback = os.getenv("PREDICTION_CONTEXT_LOOKBACK", "-2d")
+
+    df_weather = load_weather_data(start=recent_context_lookback)
     df_logs = load_logs_data(zone=zone, start=lookback)
-    df_forecast = load_forecast_data(start=lookback)
-    df_soil_temperature = load_soil_temperature_data(zone=zone, start=lookback)
+    df_forecast = load_forecast_data(start=recent_context_lookback)
+    df_soil_temperature = load_soil_temperature_data(
+        zone=zone,
+        start=recent_context_lookback,
+    )
 
     if df_weather.empty:
-        raise ValueError("No hi ha dades de weather per predir")
+        raise ValueError("No weather data is available for prediction")
 
     latest_weather = df_weather.sort_values("_time").tail(1).copy()
     prediction_time = latest_weather.iloc[0]["_time"]
