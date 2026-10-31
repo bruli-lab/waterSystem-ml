@@ -11,7 +11,7 @@ require (
 	github.com/lib/pq v1.12.3
 	github.com/stretchr/testify v1.12.1
 	github.com/uptrace/bun v1.3.0
-	github.com/uptrace/bun/dialect/pgdialect v1.2.18
+	github.com/uptrace/bun/dialect/pgdialect v1.3.0
 	go.opentelemetry.io/otel v1.47.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.47.0
 	go.opentelemetry.io/otel/sdk v1.47.0
