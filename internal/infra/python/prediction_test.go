@@ -10,8 +10,10 @@ func TestParseAndBuildPredictions(t *testing.T) {
 	t.Parallel()
 
 	output := `[
-  {"zone": "Bonsai big", "should_water": true, "decision_reason": "model", "predicted_seconds": 20, "probability": 0.72, "used_model": true},
-  {"zone": "Bonsai small", "should_water": false, "decision_reason": "Error loading model: boom", "predicted_seconds": 0, "probability": 0, "used_model": false, "error": "Error loading model: boom"}
+  {"zone": "Bonsai big", "should_water": true, "decision_reason": "model",
+   "predicted_seconds": 20, "probability": 0.72, "used_model": true},
+  {"zone": "Bonsai small", "should_water": false, "decision_reason": "Error loading model: boom",
+   "predicted_seconds": 0, "probability": 0, "used_model": false, "error": "Error loading model: boom"}
 ]`
 
 	parsed, err := parsePredictions(output)

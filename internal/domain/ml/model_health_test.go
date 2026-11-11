@@ -57,7 +57,7 @@ func TestModelHealth_Check(t *testing.T) {
 				require.Len(t, events, 1)
 				return
 			}
-			require.Len(t, events, 0)
+			require.Empty(t, events)
 		})
 	}
 }

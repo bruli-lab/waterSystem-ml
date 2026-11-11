@@ -47,7 +47,7 @@ func (e *Executor) GetStatus(ctx context.Context) (*ml.Status, error) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("error creating request: %s", err)
+		return nil, fmt.Errorf("error creating request: %w", err)
 	}
 	req.Header.Add("Authorization", e.token)
 	req.Header.Add("Content-Type", "application/json")
@@ -59,7 +59,7 @@ func (e *Executor) GetStatus(ctx context.Context) (*ml.Status, error) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("error executing request: %s", err)
+		return nil, fmt.Errorf("error executing request: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -73,12 +73,12 @@ func (e *Executor) GetStatus(ctx context.Context) (*ml.Status, error) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("error reading response: %s", err)
+		return nil, fmt.Errorf("error reading response: %w", err)
 	}
 	if err := json.Unmarshal(body, &status); err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("error decoding response: %s", err)
+		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
 
 	span.SetStatus(codes.Ok, "OK")
@@ -101,13 +101,13 @@ func (e *Executor) Execute(ctx context.Context, w *watering.Watering) error {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return fmt.Errorf("error marshaling body: %s", err)
+		return fmt.Errorf("error marshaling body: %w", err)
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(data))
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return fmt.Errorf("error creating request: %s", err)
+		return fmt.Errorf("error creating request: %w", err)
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", e.token)
@@ -119,7 +119,7 @@ func (e *Executor) Execute(ctx context.Context, w *watering.Watering) error {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return fmt.Errorf("error executing request: %s", err)
+		return fmt.Errorf("error executing request: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -140,13 +140,13 @@ func (e *Executor) getZones(ctx context.Context) error {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return fmt.Errorf("error creating request: %s", err)
+		return fmt.Errorf("error creating request: %w", err)
 	}
 	req.Header.Add("Authorization", e.token)
 
 	resp, err := e.cl.Do(req)
 	if err != nil {
-		err := fmt.Errorf("error executing request: %s", err)
+		err := fmt.Errorf("error executing request: %w", err)
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return err
@@ -165,12 +165,12 @@ func (e *Executor) getZones(ctx context.Context) error {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return fmt.Errorf("error reading response: %s", err)
+		return fmt.Errorf("error reading response: %w", err)
 	}
 	if err := json.Unmarshal(body, &zonesBody); err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return fmt.Errorf("error decoding response: %s", err)
+		return fmt.Errorf("error decoding response: %w", err)
 	}
 	e.logger.InfoContext(ctx, "Zones found", slog.Int("count", len(zonesBody)))
 	zones := make(map[string]string)
@@ -183,7 +183,13 @@ func (e *Executor) getZones(ctx context.Context) error {
 	return nil
 }
 
-func NewExecutor(ctx context.Context, timeout time.Duration, tracer trace.Tracer, host, port, token string, log *slog.Logger) (*Executor, error) {
+func NewExecutor(
+	ctx context.Context,
+	timeout time.Duration,
+	tracer trace.Tracer,
+	host, port, token string,
+	log *slog.Logger,
+) (*Executor, error) {
 	cl := http.Client{Timeout: timeout}
 	ex := Executor{tracer: tracer, host: host, port: port, cl: &cl, token: token, logger: log}
 	if err := ex.getZones(ctx); err != nil {

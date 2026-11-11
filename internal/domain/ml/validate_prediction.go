@@ -46,6 +46,10 @@ func (v ValidatePrediction) Validate(ctx context.Context, limit time.Time) ([]Pr
 	return predictions, nil
 }
 
-func NewValidatePrediction(soilMeasureRepo SoilMeasureRepository, predictionLogRepo PredictionLogRepository, tracer trace.Tracer) *ValidatePrediction {
+func NewValidatePrediction(
+	soilMeasureRepo SoilMeasureRepository,
+	predictionLogRepo PredictionLogRepository,
+	tracer trace.Tracer,
+) *ValidatePrediction {
 	return &ValidatePrediction{soilMeasureRepo: soilMeasureRepo, predictionLogRepo: predictionLogRepo, tracer: tracer}
 }

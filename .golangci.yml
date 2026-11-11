@@ -3,30 +3,102 @@ version: "2"
 run:
   timeout: 5m
   tests: true
+  modules-download-mode: readonly
 
 linters:
   default: none
   enable:
     - govet
     - staticcheck
-    - unused
-    - ineffassign
     - errcheck
+    - ineffassign
+    - bodyclose
+    - rowserrcheck
+    - sqlclosecheck
+    - nilerr
+    - errorlint
+    - contextcheck
+    - noctx
+    - copyloopvar
+    - durationcheck
+    - makezero
+    - exhaustive
+    - forcetypeassert
+    - gosec
+    - unused
+    - unparam
+    - unconvert
+    - wastedassign
+    - gocyclo
+    - cyclop
+    - gocognit
+    - funlen
+    - nestif
+    - maintidx
+    - lll
     - revive
     - gocritic
-    - bodyclose
     - misspell
-    - unconvert
+    - dupl
+    - goconst
+    - usestdlibvars
+    - perfsprint
+    - prealloc
+    - nakedret
+    - testifylint
 
   settings:
     errcheck:
       check-type-assertions: true
       check-blank: false
 
+    gosec:
+      excludes:
+        - G104
+
+    gocyclo:
+      min-complexity: 15
+
+    cyclop:
+      max-complexity: 15
+
+    gocognit:
+      min-complexity: 20
+
+    funlen:
+      lines: 80
+      statements: 50
+      ignore-comments: true
+
+    nestif:
+      min-complexity: 4
+
+    lll:
+      line-length: 140
+      tab-width: 4
+
+    dupl:
+      threshold: 150
+
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+
+    exhaustive:
+      default-signifies-exhaustive: true
+
     revive:
       rules:
         - name: unused-parameter
-          disabled: false
+        - name: unreachable-code
+        - name: early-return
+        - name: indent-error-flow
+        - name: superfluous-else
+        - name: error-strings
+        - name: error-return
+        - name: errorf
+        - name: context-as-argument
+        - name: deep-exit
 
     gocritic:
       enabled-tags:
@@ -34,11 +106,43 @@ linters:
         - performance
         - style
 
+  exclusions:
+    generated: strict
+    presets:
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+          - funlen
+          - dupl
+          - goconst
+          - gocognit
+          - cyclop
+          - maintidx
+          - forcetypeassert
+          - gosec
+      - path: _mock\.go
+        linters:
+          - dupl
+          - forcetypeassert
+      - path: internal/infra/python/command\.go
+        linters:
+          - gosec
+        text: G204
+      - path: cmd/scheduler/main\.go
+        linters:
+          - funlen
+          - maintidx
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+
 issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
+  max-issues-per-linter: 0
+  max-same-issues: 0
 
 output:
   formats:

@@ -93,27 +93,38 @@ func run() error {
 		log.ErrorContext(ctx, "Error creating ntfy publisher", "err", err)
 		return err
 	}
-	soilMeasureRepo := influxdb2.NewSoilMeasureRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
-	waterSystemExecutor, err := watersystem.NewExecutor(ctx, 5*time.Second, tracer, conf.WaterSystemHost, conf.WaterSystemPort, conf.WaterSystemToken, log)
+	soilMeasureRepo := influxdb2.NewSoilMeasureRepository(
+		conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer,
+	)
+	waterSystemExecutor, err := watersystem.NewExecutor(
+		ctx, 5*time.Second, tracer, conf.WaterSystemHost, conf.WaterSystemPort, conf.WaterSystemToken, log,
+	)
 	if err != nil {
 		log.ErrorContext(ctx, "Error creating water system executor", "err", err)
 		return err
 	}
 	executionRepo := influxdb2.NewExecutionRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
 	humidityRepo := memory.NewHumidityReferenceRepository(conf.BonsaiBigV100, conf.BonsaiBigV40, conf.BonsaiSmallV100, conf.BonsaiSmallV40)
-	waterSkippedLogRepo := influxdb2.NewWateringSkippedLogRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
+	waterSkippedLogRepo := influxdb2.NewWateringSkippedLogRepository(
+		conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer,
+	)
 	predictionLogRepo := postgresinfra.NewPredictionLogRepository(db, tracer)
 	modelHealthRepo := postgresinfra.NewModelHealthRepository(db, tracer)
-	modelTrainingRepo := influxdb2.NewModelTrainingLogRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
+	modelTrainingRepo := influxdb2.NewModelTrainingLogRepository(
+		conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer,
+	)
 	modelTrainStateRepo := postgresinfra.NewModelTrainingStateRepository(db, tracer)
 
 	trainSvc := ml.NewTrain(trainExecutor, tracer)
 	saveTrainStateSvc := ml.NewSaveModelTrainingState(modelTrainStateRepo)
 	executeSvc := watering.NewExecute(waterSystemExecutor, tracer)
 	loc := buildTimeLocation(ctx, log)
-	calculateSvc := ml.NewCalculate(predictionRepo, soilMeasureRepo, humidityRepo, executionRepo, predictionLogRepo, waterSystemExecutor, tracer, func() time.Time {
-		return time.Now().In(loc)
-	})
+	calculateSvc := ml.NewCalculate(
+		predictionRepo, soilMeasureRepo, humidityRepo, executionRepo, predictionLogRepo, waterSystemExecutor, tracer,
+		func() time.Time {
+			return time.Now().In(loc)
+		},
+	)
 	saveWaterSkipLogSvc := ml.NewSaveWateringSkippedLog(waterSkippedLogRepo)
 	validatePredictionLogSvc := ml.NewValidatePrediction(soilMeasureRepo, predictionLogRepo, tracer)
 	savePredictionLogSvc := ml.NewSavePredictionLog(predictionLogRepo)
@@ -165,7 +176,7 @@ func run() error {
 	go runTrainingZone(ctx, log, trainCh, commandBus)
 	go runCalculateWatering(ctx, commandBus, log)
 
-	serverListener, err := net.Listen("tcp", conf.ServerHost)
+	serverListener, err := new(net.ListenConfig).Listen(ctx, "tcp", conf.ServerHost)
 	log.InfoContext(ctx, "Starting server", "host", conf.ServerHost)
 	if err != nil {
 		log.ErrorContext(ctx, "Error starting server", "err", err)

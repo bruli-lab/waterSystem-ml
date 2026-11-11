@@ -2,6 +2,7 @@ package influxdb2
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/bruli-lab/go-core/ptr"
@@ -56,7 +57,7 @@ from(bucket: "bonsai-data")
 
 		measurement, ok := record.ValueByKey("_measurement").(string)
 		if !ok {
-			err := fmt.Errorf("error parsing soil moisture measurement")
+			err := errors.New("error parsing soil moisture measurement")
 			span.SetStatus(codes.Error, err.Error())
 			span.RecordError(err)
 			return nil, err
@@ -72,7 +73,7 @@ from(bucket: "bonsai-data")
 
 		humidity, ok := record.Value().(float64)
 		if !ok {
-			err := fmt.Errorf("error parsing soil moisture value")
+			err := errors.New("error parsing soil moisture value")
 			span.SetStatus(codes.Error, err.Error())
 			span.RecordError(err)
 			return nil, err

@@ -9,7 +9,7 @@ import (
 
 func TestNewHumidityReference(t *testing.T) {
 	hr := ml.NewHumidityReference(1.472, 1.3)
-	require.Equal(t, 1.3, hr.V100())
-	require.Equal(t, 1.472, hr.V40())
-	require.Equal(t, 1.3286666666666667, hr.TargetMoistureVoltage())
+	require.InDelta(t, 1.3, hr.V100(), 1e-9)
+	require.InDelta(t, 1.472, hr.V40(), 1e-9)
+	require.InDelta(t, 1.3286666666666667, hr.TargetMoistureVoltage(), 1e-9)
 }

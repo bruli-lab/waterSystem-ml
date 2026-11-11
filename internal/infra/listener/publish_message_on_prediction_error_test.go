@@ -2,7 +2,6 @@ package listener_test
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/bruli-lab/go-core/cqs"
@@ -105,7 +104,7 @@ func TestPublishMessageOnPredictionError(t *testing.T) {
 
 			require.Len(t, rec.messages, len(tt.expectedTexts))
 			for i, text := range tt.expectedTexts {
-				require.True(t, strings.Contains(rec.messages[i], text), "message %d: %q", i, rec.messages[i])
+				require.Contains(t, rec.messages[i], text, "message %d", i)
 			}
 		})
 	}

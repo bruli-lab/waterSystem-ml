@@ -57,13 +57,13 @@ func (p PredictionRepository) Get(ctx context.Context) ([]ml.Prediction, error) 
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("error running prediction: %s", err)
+		return nil, fmt.Errorf("error running prediction: %w", err)
 	}
 	predictions, err := parsePredictions(output)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("error parsing predictions: %s", err)
+		return nil, fmt.Errorf("error parsing predictions: %w", err)
 	}
 	span.SetStatus(codes.Ok, "OK")
 	return buildPredictionsDomain(predictions), nil

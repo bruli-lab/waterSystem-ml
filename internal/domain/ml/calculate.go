@@ -51,19 +51,11 @@ func (c *Calculate) Do(ctx context.Context) (*CalculatedWatering, error) {
 		return nil, err
 	}
 
-	zoneHumMap := make(map[string]*ZoneHumidity, len(measures))
-	zoneHum := make([]*ZoneHumidity, 0, len(measures))
-	for _, measure := range measures {
-		ref, err := c.humidityRefRepo.GetByZone(ctx, measure.Zone())
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			return nil, err
-		}
-
-		hum := NewZoneHumidity(measure.Zone(), measure.Humidity(), ref)
-		zoneHum = append(zoneHum, hum)
-		zoneHumMap[measure.Zone()] = hum
+	zoneHum, zoneHumMap, err := c.zonesHumidity(ctx, measures)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, err
 	}
 
 	cw, err := NewCalculatedWatering(st.Raining(), st.Active(), c.timeFunc, exec, zoneHum, pendingPredictionLogs)
@@ -92,6 +84,25 @@ func (c *Calculate) Do(ctx context.Context) (*CalculatedWatering, error) {
 	}
 
 	return cw, nil
+}
+
+func (c *Calculate) zonesHumidity(
+	ctx context.Context,
+	measures []SoilMeasure,
+) ([]*ZoneHumidity, map[string]*ZoneHumidity, error) {
+	zoneHumMap := make(map[string]*ZoneHumidity, len(measures))
+	zoneHum := make([]*ZoneHumidity, 0, len(measures))
+	for _, measure := range measures {
+		ref, err := c.humidityRefRepo.GetByZone(ctx, measure.Zone())
+		if err != nil {
+			return nil, nil, err
+		}
+
+		hum := NewZoneHumidity(measure.Zone(), measure.Humidity(), ref)
+		zoneHum = append(zoneHum, hum)
+		zoneHumMap[measure.Zone()] = hum
+	}
+	return zoneHum, zoneHumMap, nil
 }
 
 func NewCalculate(

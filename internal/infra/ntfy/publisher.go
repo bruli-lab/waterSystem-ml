@@ -65,6 +65,13 @@ func NewPublisher(user, password, baseUrl, topic string, tracer trace.Tracer) (*
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse publisher url: %w", err)
 	}
-	pu := Publisher{user: user, password: password, serverURL: serverUrl, topic: topic, tracer: tracer, client: &http.Client{Timeout: 10 * time.Second}}
+	pu := Publisher{
+		user:      user,
+		password:  password,
+		serverURL: serverUrl,
+		topic:     topic,
+		tracer:    tracer,
+		client:    &http.Client{Timeout: 10 * time.Second},
+	}
 	return &pu, nil
 }
