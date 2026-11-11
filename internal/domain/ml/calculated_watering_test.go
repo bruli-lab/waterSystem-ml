@@ -30,11 +30,11 @@ var nightTimeFunc = func() time.Time {
 }
 
 func oldExecution(zone string) ml.Execution {
-	return ptr.FromPointer(ml.NewExecution(zone, time.Now().Add(-5*time.Hour)))
+	return ptr.FromPointer(ml.NewExecution(zone, dayTimeFunc().Add(-5*time.Hour)))
 }
 
 func recentExecution(zone string) ml.Execution {
-	return ptr.FromPointer(ml.NewExecution(zone, time.Now().Add(-1*time.Hour)))
+	return ptr.FromPointer(ml.NewExecution(zone, dayTimeFunc().Add(-1*time.Hour)))
 }
 
 func executionsForAllZones() ml.Executions {

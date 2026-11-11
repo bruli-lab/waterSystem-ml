@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"time"
 
 	"github.com/bruli-lab/go-core/cqs"
 	"github.com/bruli-lab/go-core/event"
@@ -27,7 +28,8 @@ func (s *SavePredictionLogCommand) Name() string {
 }
 
 type SavePredictionLog struct {
-	svc *ml.SavePredictionLog
+	repo PredictionLogRepository
+	now  func() time.Time
 }
 
 func (s SavePredictionLog) Handle(ctx context.Context, cmd cqs.Command) ([]event.Event, error) {
@@ -44,13 +46,14 @@ func (s SavePredictionLog) Handle(ctx context.Context, cmd cqs.Command) ([]event
 		co.MoistureBefore,
 		co.WateringExecuted,
 		co.TargetMoisture,
+		s.now(),
 	)
 	if err != nil {
 		return nil, err
 	}
-	return nil, s.svc.Save(ctx, pl)
+	return nil, s.repo.Save(ctx, pl)
 }
 
-func NewSavePredictionLog(svc *ml.SavePredictionLog) *SavePredictionLog {
-	return &SavePredictionLog{svc: svc}
+func NewSavePredictionLog(repo PredictionLogRepository, now func() time.Time) *SavePredictionLog {
+	return &SavePredictionLog{repo: repo, now: now}
 }

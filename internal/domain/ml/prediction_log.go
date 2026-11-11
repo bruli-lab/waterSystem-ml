@@ -199,8 +199,8 @@ func NewPredictionLog(
 	moistureBefore float64,
 	wateringExecuted bool,
 	targetMoisture float64,
+	now time.Time,
 ) (*PredictionLog, error) {
-	now := time.Now()
 	pl := PredictionLog{
 		BasicAggregateRoot: event.NewBasicAggregateRoot(),
 		id:                 id,

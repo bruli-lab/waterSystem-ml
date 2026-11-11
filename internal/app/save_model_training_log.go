@@ -6,7 +6,6 @@ import (
 
 	"github.com/bruli-lab/go-core/cqs"
 	"github.com/bruli-lab/go-core/event"
-	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
 )
 
 const SaveModelTrainingLogCommandName = "save_model_training_log"
@@ -21,7 +20,7 @@ func (s SaveModelTrainingLogCommand) Name() string {
 }
 
 type SaveModelTrainingLog struct {
-	svc *ml.SaveModelTrainingLog
+	repo ModelTrainingLogRepository
 }
 
 func (s SaveModelTrainingLog) Handle(ctx context.Context, cmd cqs.Command) ([]event.Event, error) {
@@ -29,9 +28,9 @@ func (s SaveModelTrainingLog) Handle(ctx context.Context, cmd cqs.Command) ([]ev
 	if !ok {
 		return nil, cqs.NewInvalidCommandError(SaveModelTrainingLogCommandName, cmd.Name())
 	}
-	return nil, s.svc.Save(ctx, co.Zone, co.ExecutedAt)
+	return nil, s.repo.Save(ctx, co.Zone, co.ExecutedAt)
 }
 
-func NewSaveModelTrainingLog(svc *ml.SaveModelTrainingLog) *SaveModelTrainingLog {
-	return &SaveModelTrainingLog{svc: svc}
+func NewSaveModelTrainingLog(repo ModelTrainingLogRepository) *SaveModelTrainingLog {
+	return &SaveModelTrainingLog{repo: repo}
 }

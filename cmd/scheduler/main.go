@@ -17,7 +17,6 @@ import (
 	"github.com/bruli-lab/watersystem-ml/internal/app"
 	"github.com/bruli-lab/watersystem-ml/internal/config"
 	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
-	"github.com/bruli-lab/watersystem-ml/internal/domain/watering"
 	httpinfra "github.com/bruli-lab/watersystem-ml/internal/infra/http"
 	"github.com/bruli-lab/watersystem-ml/internal/infra/influxdb2"
 	"github.com/bruli-lab/watersystem-ml/internal/infra/listener"
@@ -115,21 +114,14 @@ func run() error {
 	)
 	modelTrainStateRepo := postgresinfra.NewModelTrainingStateRepository(db, tracer)
 
-	trainSvc := ml.NewTrain(trainExecutor, tracer)
-	saveTrainStateSvc := ml.NewSaveModelTrainingState(modelTrainStateRepo)
-	executeSvc := watering.NewExecute(waterSystemExecutor, tracer)
 	loc := buildTimeLocation(ctx, log)
-	calculateSvc := ml.NewCalculate(
-		predictionRepo, soilMeasureRepo, humidityRepo, executionRepo, predictionLogRepo, waterSystemExecutor, tracer,
+	calculateWateringHnd := app.NewCalculateWatering(
+		predictionRepo, soilMeasureRepo, humidityRepo, executionRepo, predictionLogRepo, waterSystemExecutor,
 		func() time.Time {
 			return time.Now().In(loc)
 		},
+		tracer,
 	)
-	saveWaterSkipLogSvc := ml.NewSaveWateringSkippedLog(waterSkippedLogRepo)
-	validatePredictionLogSvc := ml.NewValidatePrediction(soilMeasureRepo, predictionLogRepo, tracer)
-	savePredictionLogSvc := ml.NewSavePredictionLog(predictionLogRepo)
-	checkModelSvc := ml.NewCheckModel(modelHealthRepo, modelTrainStateRepo, tracer)
-	saveModelTrainingSvc := ml.NewSaveModelTrainingLog(modelTrainingRepo)
 
 	trainCh := make(chan struct{ Zone string }, 1)
 	defer close(trainCh)
@@ -137,7 +129,7 @@ func run() error {
 	logChMiddleware := cqs.NewCommandHndErrorMiddleware(log, tracer)
 
 	commandBus := cqs.NewCommandBus()
-	commandBus.Subscribe(app.ExecuteWateringCommandName, logChMiddleware(app.NewExecuteWatering(executeSvc)))
+	commandBus.Subscribe(app.ExecuteWateringCommandName, logChMiddleware(app.NewExecuteWatering(waterSystemExecutor)))
 	execWatOnWaterSysList := listener.NewExecuteWateringOnWateringRequested(commandBus)
 	publishMsgList := listener.NewPublishMessageOnWateringRequested(commandBus)
 	saveWaterSkippedLogWZList := listener.NewSaveWateringSkippedLogOnWateringZoneSkipped(commandBus)
@@ -157,15 +149,17 @@ func run() error {
 	listenerMdw := cqs.NewCommandHandlerEventBusMiddleware(new(eventBus), tracer)
 	multiCHMdw := cqs.CommandHandlerMultiMiddleware(logChMiddleware, listenerMdw)
 
-	commandBus.Subscribe(app.CalculateWateringEventName, multiCHMdw(app.NewCalculateWatering(calculateSvc)))
-	commandBus.Subscribe(app.WateringZoneCommandName, logChMiddleware(app.NewWateringZone(executeSvc, tracer)))
+	commandBus.Subscribe(app.CalculateWateringEventName, multiCHMdw(calculateWateringHnd))
+	commandBus.Subscribe(app.WateringZoneCommandName, logChMiddleware(app.NewWateringZone(waterSystemExecutor, tracer)))
 	commandBus.Subscribe(app.PublishMessageCommandName, logChMiddleware(app.NewPublishMessage(ntfyPublisher, tracer)))
-	commandBus.Subscribe(app.SaveWateringSkippedLogCommandName, logChMiddleware(app.NewSaveWateringSkippedLog(saveWaterSkipLogSvc, tracer)))
-	commandBus.Subscribe(app.ValidatePredictionCommandName, multiCHMdw(app.NewValidatePrediction(validatePredictionLogSvc)))
-	commandBus.Subscribe(app.SavePredictionLogCommandName, logChMiddleware(app.NewSavePredictionLog(savePredictionLogSvc)))
-	commandBus.Subscribe(app.CheckFailedModelCommandName, multiCHMdw(app.NewCheckFailedModel(checkModelSvc)))
-	commandBus.Subscribe(app.TrainingZoneCommandName, logChMiddleware(app.NewTrainingZone(trainSvc, saveTrainStateSvc)))
-	commandBus.Subscribe(app.SaveModelTrainingLogCommandName, logChMiddleware(app.NewSaveModelTrainingLog(saveModelTrainingSvc)))
+	commandBus.Subscribe(app.SaveWateringSkippedLogCommandName, logChMiddleware(app.NewSaveWateringSkippedLog(waterSkippedLogRepo, tracer)))
+	validatePredictionHnd := app.NewValidatePrediction(soilMeasureRepo, predictionLogRepo, time.Now, tracer)
+	commandBus.Subscribe(app.ValidatePredictionCommandName, multiCHMdw(validatePredictionHnd))
+	commandBus.Subscribe(app.SavePredictionLogCommandName, logChMiddleware(app.NewSavePredictionLog(predictionLogRepo, time.Now)))
+	checkFailedModelHnd := app.NewCheckFailedModel(modelHealthRepo, modelTrainStateRepo, time.Now, tracer)
+	commandBus.Subscribe(app.CheckFailedModelCommandName, multiCHMdw(checkFailedModelHnd))
+	commandBus.Subscribe(app.TrainingZoneCommandName, logChMiddleware(app.NewTrainingZone(trainExecutor, modelTrainStateRepo)))
+	commandBus.Subscribe(app.SaveModelTrainingLogCommandName, logChMiddleware(app.NewSaveModelTrainingLog(modelTrainingRepo)))
 
 	go runValidatePrediction(ctx, commandBus, log)
 

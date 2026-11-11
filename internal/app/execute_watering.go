@@ -20,7 +20,7 @@ func (e ExecuteWateringCommand) Name() string {
 }
 
 type ExecuteWatering struct {
-	svc *watering.Execute
+	executor WateringExecutor
 }
 
 func (e ExecuteWatering) Handle(ctx context.Context, cmd cqs.Command) ([]event.Event, error) {
@@ -28,9 +28,9 @@ func (e ExecuteWatering) Handle(ctx context.Context, cmd cqs.Command) ([]event.E
 	if !ok {
 		return nil, cqs.NewInvalidCommandError(ExecuteWateringCommandName, cmd.Name())
 	}
-	return nil, e.svc.Execute(ctx, watering.New(co.Zone, co.Seconds))
+	return nil, e.executor.Execute(ctx, watering.New(co.Zone, co.Seconds))
 }
 
-func NewExecuteWatering(svc *watering.Execute) *ExecuteWatering {
-	return &ExecuteWatering{svc: svc}
+func NewExecuteWatering(executor WateringExecutor) *ExecuteWatering {
+	return &ExecuteWatering{executor: executor}
 }

@@ -82,7 +82,7 @@ func (c *CalculatedWatering) allowedFromZone(zone string, currentHumidity float6
 	if !ok {
 		return false, ErrUnknownZone
 	}
-	if ex.IsRecentlyExecuted() {
+	if ex.IsRecentlyExecuted(c.timeFunc()) {
 		c.Record(NewWateringZoneSkippedEvent(zone, ZoneRecentlyExecutedByModelReason, currentHumidity, nil, nil, nil))
 		c.calculatedZones[zone] = true
 		return false, nil

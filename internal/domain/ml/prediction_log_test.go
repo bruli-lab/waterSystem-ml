@@ -11,6 +11,7 @@ import (
 )
 
 func TestNewPredictionLog(t *testing.T) {
+	now := time.Date(2026, 8, 3, 12, 0, 0, 0, time.UTC)
 	type args struct {
 		id               uuid.UUID
 		zone             string
@@ -101,14 +102,15 @@ func TestNewPredictionLog(t *testing.T) {
 				tt.args.moistureBefore,
 				tt.args.wateringExecuted,
 				tt.args.targetMoisture,
+				now,
 			)
 			if err != nil {
 				require.ErrorIs(t, err, tt.expectedErr)
 				return
 			}
 			require.Equal(t, tt.args.id, got.Id())
-			require.False(t, got.CreatedAt().IsZero())
-			require.True(t, time.Now().Before(got.ValidateAfter()))
+			require.Equal(t, now, got.CreatedAt())
+			require.Equal(t, now.Add(15*time.Minute), got.ValidateAfter())
 			require.Equal(t, tt.args.zone, got.Zone())
 			require.Equal(t, tt.args.shouldWater, got.ShouldWater())
 			require.InDelta(t, tt.args.predictedSeconds, got.PredictedSeconds(), 1e-9)

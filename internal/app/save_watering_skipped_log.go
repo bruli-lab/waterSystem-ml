@@ -29,7 +29,7 @@ func (w *SaveWateringSkippedLogCommand) Name() string {
 }
 
 type SaveWateringSkippedLog struct {
-	svc    *ml.SaveWateringSkippedLog
+	repo   WateringSkippedLogRepository
 	tracer trace.Tracer
 }
 
@@ -41,7 +41,7 @@ func (w SaveWateringSkippedLog) Handle(ctx context.Context, cmd cqs.Command) ([]
 		return nil, cqs.NewInvalidCommandError(SaveWateringSkippedLogCommandName, cmd.Name())
 	}
 	ws := ml.NewWateringSkippedLog(co.Zone, co.Reason, co.Moisture, co.PredictionID, co.DecisionReason, co.WateringProba, co.ExecutedAt)
-	if err := w.svc.Save(ctx, ws); err != nil {
+	if err := w.repo.Save(ctx, ws); err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return nil, err
@@ -49,6 +49,6 @@ func (w SaveWateringSkippedLog) Handle(ctx context.Context, cmd cqs.Command) ([]
 	return nil, nil
 }
 
-func NewSaveWateringSkippedLog(svc *ml.SaveWateringSkippedLog, tracer trace.Tracer) *SaveWateringSkippedLog {
-	return &SaveWateringSkippedLog{svc: svc, tracer: tracer}
+func NewSaveWateringSkippedLog(repo WateringSkippedLogRepository, tracer trace.Tracer) *SaveWateringSkippedLog {
+	return &SaveWateringSkippedLog{repo: repo, tracer: tracer}
 }

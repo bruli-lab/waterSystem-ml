@@ -22,8 +22,8 @@ func (w WateringZoneCommand) Name() string {
 }
 
 type WateringZone struct {
-	svc    *watering.Execute
-	tracer trace.Tracer
+	executor WateringExecutor
+	tracer   trace.Tracer
 }
 
 func (w WateringZone) Handle(ctx context.Context, cmd cqs.Command) ([]event.Event, error) {
@@ -36,9 +36,9 @@ func (w WateringZone) Handle(ctx context.Context, cmd cqs.Command) ([]event.Even
 		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
-	return nil, w.svc.Execute(ctx, watering.New(co.Zone, co.Seconds))
+	return nil, w.executor.Execute(ctx, watering.New(co.Zone, co.Seconds))
 }
 
-func NewWateringZone(svc *watering.Execute, tracer trace.Tracer) *WateringZone {
-	return &WateringZone{svc: svc, tracer: tracer}
+func NewWateringZone(executor WateringExecutor, tracer trace.Tracer) *WateringZone {
+	return &WateringZone{executor: executor, tracer: tracer}
 }
