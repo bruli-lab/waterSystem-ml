@@ -14,8 +14,10 @@ const (
 	BelowMinThresholdReason           = "below_min_threshold"
 	ModelPredictionReason             = "model_prediction"
 	ModelNotEstimatedReason           = "model_not_estimated"
+	PredictionErrorReason             = "prediction_error"
 	ZoneRecentlyExecutedByModelReason = "zone_recently_executed_by_model"
 	IsNightRangeReason                = "is_night_range"
+	PredictionPendingValidationReason = "prediction_pending_validation"
 
 	DefaultSecondsOnLowHumidity = 20
 )
@@ -81,7 +83,7 @@ func (c *CalculatedWatering) allowedFromZone(zone string, currentHumidity float6
 	if !ok {
 		return false, ErrUnknownZone
 	}
-	if ex.IsRecentlyExecuted() {
+	if ex.IsRecentlyExecuted(c.timeFunc()) {
 		c.Record(NewWateringZoneSkippedEvent(zone, ZoneRecentlyExecutedByModelReason, currentHumidity, nil, nil, nil))
 		c.calculatedZones[zone] = true
 		return false, nil
@@ -106,6 +108,19 @@ func (c *CalculatedWatering) FromPrediction(pred *Prediction, zh *ZoneHumidity) 
 	}
 
 	c.calculatedZones[pred.Zone()] = true
+
+	if pred.Failed() {
+		errorMessage := pred.ErrorMessage()
+		c.Record(NewWateringZoneSkippedEvent(
+			pred.Zone(),
+			PredictionErrorReason,
+			zh.CurrentHumidity(),
+			nil,
+			&errorMessage,
+			nil,
+		))
+		return
+	}
 
 	predictionID := pred.ID()
 	decisionReason := pred.DecisionReason()

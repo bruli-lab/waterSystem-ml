@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
 	"github.com/bruli-lab/watersystem-ml/internal/infra/postgres"
 	"github.com/stretchr/testify/require"
@@ -18,7 +20,7 @@ import (
 func TestModelTrainingStateRepository(t *testing.T) {
 	sqldb, err := sql.Open("postgres", "postgres://userdb:passdb@localhost:5432/watersystem_ml?sslmode=disable")
 	require.NoError(t, err)
-	zone := "Bonsai big"
+	zone := uuid.NewString()
 	db := bun.NewDB(sqldb, pgdialect.New())
 	repo := postgres.NewModelTrainingStateRepository(db, noop.NewTracerProvider().Tracer("test"))
 	t.Run(`Given a ModelTrainingStateRepository `, func(t *testing.T) {
@@ -26,7 +28,7 @@ func TestModelTrainingStateRepository(t *testing.T) {
 		then it returns a not found error`, func(t *testing.T) {
 			got, err := repo.GetModelTrainingState(t.Context(), zone)
 			require.Nil(t, got)
-			require.ErrorIs(t, err, ml.ErrModelPredictionStateNotFound)
+			require.ErrorIs(t, err, ml.ErrModelTrainingStateNotFound)
 		})
 		t.Run(`when Save is called,
 		then it returns no error`, func(t *testing.T) {

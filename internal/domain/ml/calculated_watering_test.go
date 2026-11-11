@@ -30,11 +30,11 @@ var nightTimeFunc = func() time.Time {
 }
 
 func oldExecution(zone string) ml.Execution {
-	return ptr.FromPointer(ml.NewExecution(zone, time.Now().Add(-5*time.Hour)))
+	return ptr.FromPointer(ml.NewExecution(zone, dayTimeFunc().Add(-5*time.Hour)))
 }
 
 func recentExecution(zone string) ml.Execution {
-	return ptr.FromPointer(ml.NewExecution(zone, time.Now().Add(-1*time.Hour)))
+	return ptr.FromPointer(ml.NewExecution(zone, dayTimeFunc().Add(-1*time.Hour)))
 }
 
 func executionsForAllZones() ml.Executions {
@@ -311,6 +311,17 @@ func TestCalculatedWatering_FromPrediction(t *testing.T) {
 			},
 			expectedReasons: []string{
 				ml.ModelNotEstimatedReason,
+			},
+		},
+		{
+			name: "failed prediction skips zone with prediction error reason",
+			pred: ml.NewFailedPrediction(uuid.New(), bonsaiBigZone, "Error loading model: boom"),
+			zh:   zoneHumidity(bonsaiBigZone, mediumHumidity),
+			expectedEvents: []event.Event{
+				&ml.WateringZoneSkippedEvent{},
+			},
+			expectedReasons: []string{
+				ml.PredictionErrorReason,
 			},
 		},
 		{

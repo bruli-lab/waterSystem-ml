@@ -2,7 +2,10 @@ package ml
 
 import "github.com/bruli-lab/go-core/event"
 
-const DefaultMaxFailureRate = 0.35
+const (
+	DefaultMaxFailureRate = 0.35
+	ModelHealthWindow     = 20
+)
 
 type ModelHealth struct {
 	event.BasicAggregateRoot
@@ -21,7 +24,7 @@ func (m *ModelHealth) totalPredictions() int {
 }
 
 func (m *ModelHealth) isCompleted() bool {
-	return m.totalPredictions() == 20
+	return m.totalPredictions() == ModelHealthWindow
 }
 
 func (m *ModelHealth) failureRate() float64 {
@@ -49,7 +52,6 @@ func (m *ModelHealth) Check() {
 
 func NewModelHealth(zone string, successfulPredictions, failedPredictions int) *ModelHealth {
 	return &ModelHealth{
-		BasicAggregateRoot:    event.BasicAggregateRoot{},
 		zone:                  zone,
 		successfulPredictions: successfulPredictions,
 		failedPredictions:     failedPredictions,

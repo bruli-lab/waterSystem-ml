@@ -11,6 +11,7 @@ import (
 )
 
 func TestNewPredictionLog(t *testing.T) {
+	now := time.Date(2026, 8, 3, 12, 0, 0, 0, time.UTC)
 	type args struct {
 		id               uuid.UUID
 		zone             string
@@ -101,21 +102,22 @@ func TestNewPredictionLog(t *testing.T) {
 				tt.args.moistureBefore,
 				tt.args.wateringExecuted,
 				tt.args.targetMoisture,
+				now,
 			)
 			if err != nil {
 				require.ErrorIs(t, err, tt.expectedErr)
 				return
 			}
-			require.Equal(t, tt.args.id, got.Id())
-			require.False(t, got.CreatedAt().IsZero())
-			require.True(t, time.Now().Before(got.ValidateAfter()))
+			require.Equal(t, tt.args.id, got.ID())
+			require.Equal(t, now, got.CreatedAt())
+			require.Equal(t, now.Add(15*time.Minute), got.ValidateAfter())
 			require.Equal(t, tt.args.zone, got.Zone())
 			require.Equal(t, tt.args.shouldWater, got.ShouldWater())
-			require.Equal(t, tt.args.predictedSeconds, got.PredictedSeconds())
+			require.InDelta(t, tt.args.predictedSeconds, got.PredictedSeconds(), 1e-9)
 			require.Equal(t, tt.args.decisionReason, got.DecisionReason())
-			require.Equal(t, tt.args.moistureBefore, got.MoistureBefore())
+			require.InDelta(t, tt.args.moistureBefore, got.MoistureBefore(), 1e-9)
 			require.Equal(t, tt.args.wateringExecuted, got.WateringExecuted())
-			require.Equal(t, tt.args.targetMoisture, got.TargetMoisture())
+			require.InDelta(t, tt.args.targetMoisture, got.TargetMoisture(), 1e-9)
 			require.Equal(t, ml.PredictionLogStatusPending, got.Status())
 			require.Nil(t, got.ValidationAt())
 			require.Nil(t, got.MoistureAfter())

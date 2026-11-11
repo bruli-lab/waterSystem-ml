@@ -2,10 +2,12 @@ package app
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/bruli-lab/go-core/cqs"
 	"github.com/bruli-lab/go-core/event"
+
 	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
 )
 
@@ -20,7 +22,9 @@ func (v ValidatePredictionCommand) Name() string {
 }
 
 type ValidatePrediction struct {
-	svc *ml.ValidatePrediction
+	soilMeasureRepo   SoilMeasureRepository
+	predictionLogRepo PredictionLogRepository
+	now               func() time.Time
 }
 
 func (v ValidatePrediction) Handle(ctx context.Context, cmd cqs.Command) ([]event.Event, error) {
@@ -28,17 +32,40 @@ func (v ValidatePrediction) Handle(ctx context.Context, cmd cqs.Command) ([]even
 	if !ok {
 		return nil, cqs.NewInvalidCommandError(ValidatePredictionCommandName, cmd.Name())
 	}
-	pred, err := v.svc.Validate(ctx, co.Limit)
+	return v.validate(ctx, co.Limit)
+}
+
+func (v ValidatePrediction) validate(ctx context.Context, limit time.Time) ([]event.Event, error) {
+	measures, err := v.soilMeasureRepo.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
 	events := make([]event.Event, 0)
-	for i := range pred {
-		events = append(events, pred[i].Events()...)
+	for _, measure := range measures {
+		pl, err := v.predictionLogRepo.GetPendingByZone(ctx, measure.Zone(), limit)
+		if err != nil {
+			if errors.Is(err, ml.ErrPredictionLogNotFound) {
+				continue
+			}
+			return nil, err
+		}
+		pl.AddValidation(new(v.now()), new(measure.Humidity()))
+		if err := v.predictionLogRepo.Save(ctx, pl); err != nil {
+			return nil, err
+		}
+		events = append(events, pl.Events()...)
 	}
 	return events, nil
 }
 
-func NewValidatePrediction(svc *ml.ValidatePrediction) *ValidatePrediction {
-	return &ValidatePrediction{svc: svc}
+func NewValidatePrediction(
+	soilMeasureRepo SoilMeasureRepository,
+	predictionLogRepo PredictionLogRepository,
+	now func() time.Time,
+) *ValidatePrediction {
+	return &ValidatePrediction{
+		soilMeasureRepo:   soilMeasureRepo,
+		predictionLogRepo: predictionLogRepo,
+		now:               now,
+	}
 }

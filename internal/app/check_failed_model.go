@@ -2,9 +2,12 @@ package app
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"github.com/bruli-lab/go-core/cqs"
 	"github.com/bruli-lab/go-core/event"
+
 	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
 )
 
@@ -19,7 +22,9 @@ func (c CheckFailedModelCommand) Name() string {
 }
 
 type CheckFailedModel struct {
-	svc *ml.CheckModel
+	modelHealthRepo     ModelHealthRepository
+	modelTrainStateRepo ModelTrainingStateRepository
+	now                 func() time.Time
 }
 
 func (c CheckFailedModel) Handle(ctx context.Context, cmd cqs.Command) ([]event.Event, error) {
@@ -27,16 +32,37 @@ func (c CheckFailedModel) Handle(ctx context.Context, cmd cqs.Command) ([]event.
 	if !ok {
 		return nil, cqs.NewInvalidCommandError(CheckFailedModelCommandName, cmd.Name())
 	}
-	mh, err := c.svc.Check(ctx, co.Zone)
+	return c.check(ctx, co.Zone)
+}
+
+func (c CheckFailedModel) check(ctx context.Context, zone string) ([]event.Event, error) {
+	mts, err := c.modelTrainStateRepo.GetModelTrainingState(ctx, zone)
+	if err != nil && !errors.Is(err, ml.ErrModelTrainingStateNotFound) {
+		return nil, err
+	}
+	var lastTrainingAt time.Time
+	if mts != nil {
+		if mts.IsRecentlyTraining(c.now()) {
+			return nil, nil
+		}
+		lastTrainingAt = mts.TrainingAt()
+	}
+	modelHealth, err := c.modelHealthRepo.GetModelHealth(ctx, zone, lastTrainingAt)
 	if err != nil {
 		return nil, err
 	}
-	if mh == nil {
-		return nil, nil
-	}
-	return mh.Events(), nil
+	modelHealth.Check()
+	return modelHealth.Events(), nil
 }
 
-func NewCheckFailedModel(svc *ml.CheckModel) *CheckFailedModel {
-	return &CheckFailedModel{svc: svc}
+func NewCheckFailedModel(
+	modelHealthRepo ModelHealthRepository,
+	modelTrainStateRepo ModelTrainingStateRepository,
+	now func() time.Time,
+) *CheckFailedModel {
+	return &CheckFailedModel{
+		modelHealthRepo:     modelHealthRepo,
+		modelTrainStateRepo: modelTrainStateRepo,
+		now:                 now,
+	}
 }

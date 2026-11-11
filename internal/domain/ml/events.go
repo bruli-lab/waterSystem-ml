@@ -12,7 +12,7 @@ const (
 	PredictionValidationFailedEventName = "prediction_validation_failed"
 	ZoneModelDegradedEventName          = "zone_model_degraded"
 
-	PredictionPendingValidationReason = "prediction_pending_validation"
+	WateringSystemAggregateID = "watering_system"
 )
 
 type ZoneModelDegradedEvent struct {
@@ -22,7 +22,7 @@ type ZoneModelDegradedEvent struct {
 
 func NewZoneModelDegradedEvent(zone string) *ZoneModelDegradedEvent {
 	return &ZoneModelDegradedEvent{
-		BasicEvent: event.NewBasicEvent(ZoneModelDegradedEventName, uuid.New(), uuid.NewString()),
+		BasicEvent: event.NewBasicEvent(ZoneModelDegradedEventName, uuid.New(), zone),
 		Zone:       zone,
 	}
 }
@@ -46,7 +46,7 @@ type WateringSystemSkippedEvent struct {
 
 func NewWateringSystemSkippedEvent(reason string) *WateringSystemSkippedEvent {
 	return &WateringSystemSkippedEvent{
-		BasicEvent: event.NewBasicEvent(WateringSystemSkippedEventName, uuid.New(), uuid.NewString()),
+		BasicEvent: event.NewBasicEvent(WateringSystemSkippedEventName, uuid.New(), WateringSystemAggregateID),
 		Reason:     reason,
 	}
 }
@@ -70,7 +70,7 @@ func NewWateringZoneSkippedEvent(
 	wateringProba *float64,
 ) *WateringZoneSkippedEvent {
 	return &WateringZoneSkippedEvent{
-		BasicEvent:     event.NewBasicEvent(WateringZoneSkippedEventName, uuid.New(), uuid.NewString()),
+		BasicEvent:     event.NewBasicEvent(WateringZoneSkippedEventName, uuid.New(), zone),
 		Zone:           zone,
 		Reason:         reason,
 		Moisture:       moisture,
@@ -101,7 +101,7 @@ func NewWateringRequestedEvent(
 	wateringProba *float64,
 ) *WateringRequestedEvent {
 	return &WateringRequestedEvent{
-		BasicEvent:     event.NewBasicEvent(WateringRequestedEventName, uuid.New(), uuid.NewString()),
+		BasicEvent:     event.NewBasicEvent(WateringRequestedEventName, uuid.New(), zone),
 		Zone:           zone,
 		Reason:         reason,
 		Seconds:        seconds,

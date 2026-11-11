@@ -27,7 +27,7 @@ func (t TrainingExecutor) Run(ctx context.Context, zone string) error {
 	defer span.End()
 	output, err := runCommand(ctx, t.timeout, t.pythonPath, trainFile, "--zone", zone)
 	if err != nil {
-		err = fmt.Errorf("error running training: %s", output)
+		err = fmt.Errorf("error running training: %w; output=%q", err, output)
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return err

@@ -9,7 +9,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"runtime/debug"
+	"syscall"
 	"time"
 
 	"github.com/bruli-lab/go-core/cqs"
@@ -17,7 +19,6 @@ import (
 	"github.com/bruli-lab/watersystem-ml/internal/app"
 	"github.com/bruli-lab/watersystem-ml/internal/config"
 	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
-	"github.com/bruli-lab/watersystem-ml/internal/domain/watering"
 	httpinfra "github.com/bruli-lab/watersystem-ml/internal/infra/http"
 	"github.com/bruli-lab/watersystem-ml/internal/infra/influxdb2"
 	"github.com/bruli-lab/watersystem-ml/internal/infra/listener"
@@ -27,7 +28,6 @@ import (
 	"github.com/bruli-lab/watersystem-ml/internal/infra/python"
 	"github.com/bruli-lab/watersystem-ml/internal/infra/tracing"
 	watersystem "github.com/bruli-lab/watersystem-ml/internal/infra/water_system"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
@@ -43,7 +43,8 @@ func main() {
 }
 
 func run() error {
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	conf, err := config.New()
 	if err != nil {
@@ -55,6 +56,7 @@ func run() error {
 	sqlDB, err := sql.Open("postgres", conf.PostgresDataSource())
 	if err != nil {
 		log.ErrorContext(ctx, "Error connecting to database", "err", err)
+		return err
 	}
 	defer func() {
 		_ = sqlDB.Close()
@@ -75,7 +77,7 @@ func run() error {
 		return err
 	}
 	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 		defer cancel()
 
 		if err := tracingProv.Shutdown(shutdownCtx); err != nil {
@@ -85,86 +87,84 @@ func run() error {
 
 	tracer := otel.Tracer(serviceName)
 
-	duration := 30 * time.Minute
-	trainExecutor := python.NewTrainingExecutor(duration, conf.PythonPath, tracer, log)
-	predictionRepo := python.NewPredictionRepository(tracer, conf.PythonPath, duration)
+	trainExecutor := python.NewTrainingExecutor(30*time.Minute, conf.PythonPath, tracer, log)
+	predictionRepo := python.NewPredictionRepository(tracer, conf.PythonPath, 3*time.Minute)
 	ntfyPublisher, err := ntfy.NewPublisher(conf.NtfyUser, conf.NtfyPassword, conf.NtfyURL, conf.NtfyTopic, tracer)
 	if err != nil {
 		log.ErrorContext(ctx, "Error creating ntfy publisher", "err", err)
 		return err
 	}
-	soilMeasureRepo := influxdb2.NewSoilMeasureRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
-	waterSystemExecutor, err := watersystem.NewExecutor(ctx, 5*time.Second, tracer, conf.WaterSystemHost, conf.WaterSystemPort, conf.WaterSystemToken, log)
+	soilMeasureRepo := influxdb2.NewSoilMeasureRepository(
+		conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer,
+	)
+	waterSystemExecutor, err := watersystem.NewExecutor(
+		ctx, 5*time.Second, tracer, conf.WaterSystemHost, conf.WaterSystemPort, conf.WaterSystemToken, log,
+	)
 	if err != nil {
 		log.ErrorContext(ctx, "Error creating water system executor", "err", err)
 		return err
 	}
 	executionRepo := influxdb2.NewExecutionRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
 	humidityRepo := memory.NewHumidityReferenceRepository(conf.BonsaiBigV100, conf.BonsaiBigV40, conf.BonsaiSmallV100, conf.BonsaiSmallV40)
-	waterSkippedLogRepo := influxdb2.NewWateringSkippedLogRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
+	waterSkippedLogRepo := influxdb2.NewWateringSkippedLogRepository(
+		conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer,
+	)
 	predictionLogRepo := postgresinfra.NewPredictionLogRepository(db, tracer)
 	modelHealthRepo := postgresinfra.NewModelHealthRepository(db, tracer)
-	modelTrainingRepo := influxdb2.NewModelTrainingLogRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
+	modelTrainingRepo := influxdb2.NewModelTrainingLogRepository(
+		conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer,
+	)
 	modelTrainStateRepo := postgresinfra.NewModelTrainingStateRepository(db, tracer)
 
-	trainSvc := ml.NewTrain(trainExecutor, tracer)
-	saveTrainStateSvc := ml.NewSaveModelTrainingState(modelTrainStateRepo)
-	executeSvc := watering.NewExecute(waterSystemExecutor, tracer)
 	loc := buildTimeLocation(ctx, log)
-	calculateSvc := ml.NewCalculate(predictionRepo, soilMeasureRepo, humidityRepo, executionRepo, predictionLogRepo, waterSystemExecutor, tracer, func() time.Time {
-		return time.Now().In(loc)
-	})
-	saveWaterSkipLogSvc := ml.NewSaveWateringSkippedLog(waterSkippedLogRepo)
-	validatePredictionLogSvc := ml.NewValidatePrediction(soilMeasureRepo, predictionLogRepo, tracer)
-	savePredictionLogSvc := ml.NewSavePredictionLog(predictionLogRepo)
-	checkModelSvc := ml.NewCheckModel(modelHealthRepo, modelTrainStateRepo, tracer)
-	saveModelTrainingSvc := ml.NewSaveModelTrainingLog(modelTrainingRepo)
+	calculateWateringHnd := app.NewCalculateWatering(
+		predictionRepo, soilMeasureRepo, humidityRepo, executionRepo, predictionLogRepo, waterSystemExecutor,
+		func() time.Time {
+			return time.Now().In(loc)
+		},
+	)
 
 	trainCh := make(chan struct{ Zone string }, 1)
-	defer close(trainCh)
 
 	logChMiddleware := cqs.NewCommandHndErrorMiddleware(log, tracer)
 
 	commandBus := cqs.NewCommandBus()
-	commandBus.Subscribe(app.ExecuteWateringCommandName, logChMiddleware(app.NewExecuteWatering(executeSvc)))
+	commandBus.Subscribe(app.ExecuteWateringCommandName, logChMiddleware(app.NewExecuteWatering(waterSystemExecutor)))
 	execWatOnWaterSysList := listener.NewExecuteWateringOnWateringRequested(commandBus)
 	publishMsgList := listener.NewPublishMessageOnWateringRequested(commandBus)
 	saveWaterSkippedLogWZList := listener.NewSaveWateringSkippedLogOnWateringZoneSkipped(commandBus)
 	saveWaterSkippedLogWSList := listener.NewSaveWateringSkippedLogOnWateringSystemSkipped(commandBus)
+	publishMsgPredErrList := listener.NewPublishMessageOnPredictionError(commandBus)
 	checkModelPredValFailedList := listener.NewCheckModelOnPredictionValidationFailed(commandBus)
 	trainModelZoneModelDegradedList := listener.NewTrainModelOnZoneModelDegraded(trainCh)
-	saveModelTrainLogZoneModelDegradedList := listener.NewSaveModelTrainingLogOnZoneModelDegraded(commandBus)
 
 	eventBus := event.NewBus()
-	eventBus.Subscribe(ml.WateringRequestedEventName, publishMsgList, execWatOnWaterSysList)
-	eventBus.Subscribe(ml.WateringZoneSkippedEventName, saveWaterSkippedLogWZList)
+	eventBus.Subscribe(ml.WateringRequestedEventName, publishMsgList, execWatOnWaterSysList, publishMsgPredErrList)
+	eventBus.Subscribe(ml.WateringZoneSkippedEventName, saveWaterSkippedLogWZList, publishMsgPredErrList)
 	eventBus.Subscribe(ml.WateringSystemSkippedEventName, saveWaterSkippedLogWSList)
 	eventBus.Subscribe(ml.PredictionValidationFailedEventName, checkModelPredValFailedList)
-	eventBus.Subscribe(ml.ZoneModelDegradedEventName, trainModelZoneModelDegradedList, saveModelTrainLogZoneModelDegradedList)
+	eventBus.Subscribe(ml.ZoneModelDegradedEventName, trainModelZoneModelDegradedList)
 
 	listenerMdw := cqs.NewCommandHandlerEventBusMiddleware(new(eventBus), tracer)
 	multiCHMdw := cqs.CommandHandlerMultiMiddleware(logChMiddleware, listenerMdw)
 
-	commandBus.Subscribe(app.CalculateWateringEventName, multiCHMdw(app.NewCalculateWatering(calculateSvc)))
-	commandBus.Subscribe(app.WateringZoneCommandName, logChMiddleware(app.NewWateringZone(executeSvc, tracer)))
-	commandBus.Subscribe(app.PublishMessageCommandName, logChMiddleware(app.NewPublishMessage(ntfyPublisher, tracer)))
-	commandBus.Subscribe(app.SaveWateringSkippedLogCommandName, logChMiddleware(app.NewSaveWateringSkippedLog(saveWaterSkipLogSvc, tracer)))
-	commandBus.Subscribe(app.ValidatePredictionCommandName, multiCHMdw(app.NewValidatePrediction(validatePredictionLogSvc)))
-	commandBus.Subscribe(app.SavePredictionLogCommandName, logChMiddleware(app.NewSavePredictionLog(savePredictionLogSvc)))
-	commandBus.Subscribe(app.CheckFailedModelCommandName, multiCHMdw(app.NewCheckFailedModel(checkModelSvc)))
-	commandBus.Subscribe(app.TrainingZoneCommandName, logChMiddleware(app.NewTrainingZone(trainSvc, saveTrainStateSvc)))
-	commandBus.Subscribe(app.SaveModelTrainingLogCommandName, logChMiddleware(app.NewSaveModelTrainingLog(saveModelTrainingSvc)))
+	commandBus.Subscribe(app.CalculateWateringEventName, multiCHMdw(calculateWateringHnd))
+	commandBus.Subscribe(app.PublishMessageCommandName, logChMiddleware(app.NewPublishMessage(ntfyPublisher)))
+	commandBus.Subscribe(app.SaveWateringSkippedLogCommandName, logChMiddleware(app.NewSaveWateringSkippedLog(waterSkippedLogRepo)))
+	validatePredictionHnd := app.NewValidatePrediction(soilMeasureRepo, predictionLogRepo, time.Now)
+	commandBus.Subscribe(app.ValidatePredictionCommandName, multiCHMdw(validatePredictionHnd))
+	commandBus.Subscribe(app.SavePredictionLogCommandName, logChMiddleware(app.NewSavePredictionLog(predictionLogRepo, time.Now)))
+	checkFailedModelHnd := app.NewCheckFailedModel(modelHealthRepo, modelTrainStateRepo, time.Now)
+	commandBus.Subscribe(app.CheckFailedModelCommandName, multiCHMdw(checkFailedModelHnd))
+	trainingZoneHnd := app.NewTrainingZone(trainExecutor, modelTrainStateRepo, modelTrainingRepo, time.Now)
+	commandBus.Subscribe(app.TrainingZoneCommandName, logChMiddleware(trainingZoneHnd))
 
 	go runValidatePrediction(ctx, commandBus, log)
 
-	errCh := make(chan error)
-	defer close(errCh)
-
-	go initialTraining(ctx, conf, log, commandBus)
-	go runTrainingZone(ctx, log, trainCh, commandBus)
+	go runTrainingZone(ctx, conf, log, trainCh, commandBus)
 	go runCalculateWatering(ctx, commandBus, log)
 
-	serverListener, err := net.Listen("tcp", conf.ServerHost)
+	serverListener, err := new(net.ListenConfig).Listen(ctx, "tcp", conf.ServerHost)
 	log.InfoContext(ctx, "Starting server", "host", conf.ServerHost)
 	if err != nil {
 		log.ErrorContext(ctx, "Error starting server", "err", err)
@@ -175,21 +175,17 @@ func run() error {
 	}()
 
 	srv := httpinfra.NewServer(conf.ServerHost)
-	defer func() {
-		log.InfoContext(ctx, "Closing server")
-		_ = srv.Shutdown(ctx)
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- runHTTPServer(ctx, srv, log, serverListener)
 	}()
 
-	go func(ch chan error) {
-		if err := runHTTPServer(ctx, srv, log, serverListener); err != nil {
-			ch <- err
-		}
-	}(errCh)
-
-	if err := <-errCh; err != nil {
+	select {
+	case err := <-errCh:
 		return err
+	case <-ctx.Done():
+		return <-errCh
 	}
-	return nil
 }
 
 func buildTimeLocation(ctx context.Context, log *slog.Logger) *time.Location {
@@ -201,17 +197,20 @@ func buildTimeLocation(ctx context.Context, log *slog.Logger) *time.Location {
 	return loc
 }
 
-func runTrainingZone(ctx context.Context, log *slog.Logger, ch <-chan struct{ Zone string }, bus cqs.CommandBus) {
+func runTrainingZone(
+	ctx context.Context,
+	conf *config.Config,
+	log *slog.Logger,
+	ch <-chan struct{ Zone string },
+	bus cqs.CommandBus,
+) {
+	initialTraining(ctx, conf, log, bus)
 	log.InfoContext(ctx, "Starting training zone worker")
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case zone, ok := <-ch:
-			if !ok {
-				log.InfoContext(ctx, "Training zone channel closed. Worker stopped")
-				return
-			}
+		case zone := <-ch:
 			func() {
 				defer recoverBackground(ctx, log, "training zone")
 				_, _ = bus.Handle(ctx, app.TrainingZoneCommand{Zone: zone.Zone})
@@ -261,7 +260,7 @@ func executeTraining(ctx context.Context, svc cqs.CommandHandler) {
 		"Bonsai small",
 	}
 	for _, zone := range zones {
-		_, _ = svc.Handle(ctx, app.TrainingZoneCommand{Zone: zone})
+		_, _ = svc.Handle(ctx, app.TrainingZoneCommand{Zone: zone, Force: true})
 	}
 }
 
@@ -343,9 +342,9 @@ func runHTTPServer(ctx context.Context, srv *http.Server, log *slog.Logger, serv
 
 func shutdown(ctx context.Context, srv *http.Server, log *slog.Logger) {
 	<-ctx.Done()
-	log.InfoContext(ctx, "Ctrl+C received, shutting down server")
+	log.InfoContext(ctx, "Shutdown signal received, stopping server")
 
-	shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {

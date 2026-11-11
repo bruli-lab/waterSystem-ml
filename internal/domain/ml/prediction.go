@@ -9,29 +9,38 @@ type Prediction struct {
 	predictedSeconds float64
 	decisionReason   string
 	wateringProba    float64
+	errorMessage     string
 }
 
-func (p Prediction) WateringProba() float64 {
+func (p *Prediction) Failed() bool {
+	return p.errorMessage != ""
+}
+
+func (p *Prediction) ErrorMessage() string {
+	return p.errorMessage
+}
+
+func (p *Prediction) WateringProba() float64 {
 	return p.wateringProba
 }
 
-func (p Prediction) ID() uuid.UUID {
+func (p *Prediction) ID() uuid.UUID {
 	return p.id
 }
 
-func (p Prediction) Zone() string {
+func (p *Prediction) Zone() string {
 	return p.zone
 }
 
-func (p Prediction) ShouldWater() bool {
+func (p *Prediction) ShouldWater() bool {
 	return p.shouldWater
 }
 
-func (p Prediction) PredictedSeconds() float64 {
+func (p *Prediction) PredictedSeconds() float64 {
 	return p.predictedSeconds
 }
 
-func (p Prediction) DecisionReason() string {
+func (p *Prediction) DecisionReason() string {
 	return p.decisionReason
 }
 
@@ -50,5 +59,14 @@ func NewPrediction(
 		predictedSeconds: predictedSeconds,
 		decisionReason:   decisionReason,
 		wateringProba:    wateringProba,
+	}
+}
+
+func NewFailedPrediction(id uuid.UUID, zone, errorMessage string) *Prediction {
+	return &Prediction{
+		id:             id,
+		zone:           zone,
+		decisionReason: errorMessage,
+		errorMessage:   errorMessage,
 	}
 }

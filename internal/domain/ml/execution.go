@@ -19,8 +19,8 @@ func (e Execution) ExecutionTime() time.Time {
 	return e.executionTime
 }
 
-func (e Execution) IsRecentlyExecuted() bool {
-	return time.Since(e.executionTime) < WateringCoolDown
+func (e Execution) IsRecentlyExecuted(now time.Time) bool {
+	return now.Sub(e.executionTime) < WateringCoolDown
 }
 
 func NewExecution(zone string, executionTime time.Time) *Execution {

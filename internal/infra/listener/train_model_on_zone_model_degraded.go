@@ -13,16 +13,16 @@ type TrainModelOnZoneModelDegraded struct {
 }
 
 func (t TrainModelOnZoneModelDegraded) Listen(ctx context.Context, ev event.Event) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
 	zmd, ok := ev.(*ml.ZoneModelDegradedEvent)
 	if !ok {
 		return fmt.Errorf("invalid event type: %T", ev)
 	}
-	t.ch <- struct{ Zone string }{Zone: zmd.Zone}
+	select {
+	case t.ch <- struct{ Zone string }{Zone: zmd.Zone}:
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
 	return nil
 }
 

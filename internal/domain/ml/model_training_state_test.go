@@ -40,7 +40,7 @@ func TestModelTrainingState_IsRecentlyTraining(t *testing.T) {
 		when IsRecentlyTraining method is called `+tt.name, func(t *testing.T) {
 			t.Parallel()
 			m := ml.NewModelTrainingState(tt.fields.zone, tt.fields.trainingAt)
-			require.Equal(t, tt.want, m.IsRecentlyTraining())
+			require.Equal(t, tt.want, m.IsRecentlyTraining(time.Now()))
 		})
 	}
 }

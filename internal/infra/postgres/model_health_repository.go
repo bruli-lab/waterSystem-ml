@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
 	"github.com/uptrace/bun"
@@ -15,7 +16,7 @@ type ModelHealthRepository struct {
 	tracer trace.Tracer
 }
 
-func (m ModelHealthRepository) GetModelHealth(ctx context.Context, zone string) (*ml.ModelHealth, error) {
+func (m ModelHealthRepository) GetModelHealth(ctx context.Context, zone string, since time.Time) (*ml.ModelHealth, error) {
 	ctx, span := m.tracer.Start(ctx, "ModelHealthRepository.GetModelHealth")
 	defer span.End()
 	var result resultPrediction
@@ -25,11 +26,12 @@ func (m ModelHealthRepository) GetModelHealth(ctx context.Context, zone string) 
 				Model((*modelPrediction)(nil)).
 				Column("reached_target").
 				Where("zone = ?", zone).
+				Where("created_at > ?", since).
 				Where("validation_at IS NOT NULL").
 				Where("watering_executed = TRUE").
 				Where("reached_target IS NOT NULL").
 				OrderExpr("validation_at DESC").
-				Limit(20),
+				Limit(ml.ModelHealthWindow),
 		).
 		TableExpr("latest").
 		ColumnExpr("COUNT(*) FILTER (WHERE reached_target = TRUE) AS successful_predictions").
@@ -41,7 +43,7 @@ func (m ModelHealthRepository) GetModelHealth(ctx context.Context, zone string) 
 		span.RecordError(err)
 		return nil, err
 	}
-	return ml.NewModelHealth(zone, result.SuccessfulPredictions, result.FailedPredictions), err
+	return ml.NewModelHealth(zone, result.SuccessfulPredictions, result.FailedPredictions), nil
 }
 
 func NewModelHealthRepository(db bun.IDB, tracer trace.Tracer) *ModelHealthRepository {

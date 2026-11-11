@@ -11,12 +11,12 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type modelTrainingStateRepository struct {
+type ModelTrainingStateRepository struct {
 	db     bun.IDB
 	tracer trace.Tracer
 }
 
-func (m modelTrainingStateRepository) GetModelTrainingState(ctx context.Context, zone string) (*ml.ModelTrainingState, error) {
+func (m ModelTrainingStateRepository) GetModelTrainingState(ctx context.Context, zone string) (*ml.ModelTrainingState, error) {
 	ctx, span := m.tracer.Start(ctx, "ModelTrainingStateRepository.GetModelTrainingState")
 	defer span.End()
 	model := &modelTrainingState{}
@@ -27,7 +27,7 @@ func (m modelTrainingStateRepository) GetModelTrainingState(ctx context.Context,
 		Scan(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ml.ErrModelPredictionStateNotFound
+			return nil, ml.ErrModelTrainingStateNotFound
 		}
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -36,7 +36,7 @@ func (m modelTrainingStateRepository) GetModelTrainingState(ctx context.Context,
 	return ml.NewModelTrainingState(model.Zone, model.LastTrainingAt), nil
 }
 
-func (m modelTrainingStateRepository) Save(ctx context.Context, state *ml.ModelTrainingState) error {
+func (m ModelTrainingStateRepository) Save(ctx context.Context, state *ml.ModelTrainingState) error {
 	ctx, span := m.tracer.Start(ctx, "ModelTrainingStateRepository.Save")
 	defer span.End()
 	model := &modelTrainingState{
@@ -56,6 +56,6 @@ func (m modelTrainingStateRepository) Save(ctx context.Context, state *ml.ModelT
 	return nil
 }
 
-func NewModelTrainingStateRepository(db bun.IDB, tracer trace.Tracer) *modelTrainingStateRepository {
-	return &modelTrainingStateRepository{db: db, tracer: tracer}
+func NewModelTrainingStateRepository(db bun.IDB, tracer trace.Tracer) *ModelTrainingStateRepository {
+	return &ModelTrainingStateRepository{db: db, tracer: tracer}
 }

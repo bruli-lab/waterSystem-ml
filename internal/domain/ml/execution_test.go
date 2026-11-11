@@ -39,7 +39,7 @@ func TestNewExecution(t *testing.T) {
 		t.Run(`Given a Execution struct,`+tt.name, func(t *testing.T) {
 			t.Parallel()
 			exec := NewExecution(tt.args.zone, tt.args.executionTime)
-			require.Equal(t, tt.expected, exec.IsRecentlyExecuted())
+			require.Equal(t, tt.expected, exec.IsRecentlyExecuted(now))
 		})
 	}
 }

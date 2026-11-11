@@ -126,6 +126,7 @@ def build_no_model_result(zone: str) -> dict:
 
 
 def build_error_result(zone: str, message: str) -> dict:
+    checkpoint(f"zone {zone}: ERROR {message}")
     return {
         "zone": zone,
         "should_water": False,
@@ -133,6 +134,7 @@ def build_error_result(zone: str, message: str) -> dict:
         "predicted_seconds": 0.0,
         "probability": 0.0,
         "used_model": False,
+        "error": message,
     }
 
 
@@ -260,8 +262,9 @@ def main():
 
     results = [predict_zone(zone) for zone in zones]
 
-    # Només zones que realment s'han de regar
-    watering_results = [result for result in results if result.get("should_water") is True]
+    watering_results = [
+        result for result in results if result.get("should_water") is True or result.get("error")
+    ]
 
     print(json.dumps(watering_results, ensure_ascii=False, indent=2))
     checkpoint("finished prediction", started_at)

@@ -27,11 +27,12 @@ type Prediction struct {
 	SoilMoisture                     float64 `json:"soil_moisture"`
 	SoilTemperature                  float64 `json:"soil_temperature"`
 	SoilMoistureDiff                 float64 `json:"soil_moisture_diff"`
-	WateringProba                    float64 `json:"watering_proba"`
+	Probability                      float64 `json:"probability"`
 	RawPredictedSeconds              float64 `json:"raw_predicted_seconds"`
 	ShouldWater                      bool    `json:"should_water"`
 	PredictedSeconds                 float64 `json:"predicted_seconds"`
 	DecisionReason                   string  `json:"decision_reason"`
+	Error                            string  `json:"error"`
 }
 
 func parsePredictions(output string) ([]Prediction, error) {
@@ -56,13 +57,13 @@ func (p PredictionRepository) Get(ctx context.Context) ([]ml.Prediction, error) 
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("error running prediction: %s", err)
+		return nil, fmt.Errorf("error running prediction: %w", err)
 	}
 	predictions, err := parsePredictions(output)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("error parsing predictions: %s", err)
+		return nil, fmt.Errorf("error parsing predictions: %w", err)
 	}
 	span.SetStatus(codes.Ok, "OK")
 	return buildPredictionsDomain(predictions), nil
@@ -73,7 +74,11 @@ func buildPredictionsDomain(predictions []Prediction) []ml.Prediction {
 
 	for i := range predictions {
 		p := &predictions[i]
-		prediction := ml.NewPrediction(uuid.New(), p.Zone, p.ShouldWater, p.PredictedSeconds, p.DecisionReason, p.WateringProba)
+		if p.Error != "" {
+			pred[i] = *ml.NewFailedPrediction(uuid.New(), p.Zone, p.Error)
+			continue
+		}
+		prediction := ml.NewPrediction(uuid.New(), p.Zone, p.ShouldWater, p.PredictedSeconds, p.DecisionReason, p.Probability)
 		pred[i] = *prediction
 	}
 	return pred

@@ -19,13 +19,14 @@ func (s SaveWateringSkippedLogOnWateringZoneSkipped) Listen(ctx context.Context,
 	if !ok {
 		return fmt.Errorf("invalid event type: %T", ev)
 	}
-	_, _ = s.ch.Handle(ctx, &app.SaveWateringSkippedLogCommand{
+	_, _ = s.ch.Handle(ctx, app.SaveWateringSkippedLogCommand{
 		Zone:           new(wzk.Zone),
 		Reason:         wzk.Reason,
 		Moisture:       new(wzk.Moisture),
 		PredictionID:   wzk.PredictionID,
 		DecisionReason: wzk.DecisionReason,
 		WateringProba:  wzk.WateringProba,
+		ExecutedAt:     wzk.EventAt(),
 	})
 	return nil
 }

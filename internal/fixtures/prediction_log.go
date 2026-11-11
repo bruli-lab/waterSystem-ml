@@ -2,6 +2,7 @@ package fixtures
 
 import (
 	"testing"
+	"time"
 
 	"github.com/bruli-lab/go-core/fixtures"
 	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
@@ -18,6 +19,7 @@ type PredictionLogBuilder struct {
 	MoistureBefore   *float64
 	WateringExecuted bool
 	TargetMoisture   *float64
+	CreatedAt        *time.Time
 }
 
 func (b PredictionLogBuilder) Build(t *testing.T) ml.PredictionLog {
@@ -27,7 +29,8 @@ func (b PredictionLogBuilder) Build(t *testing.T) ml.PredictionLog {
 	reason := fixtures.SetData("reason", b.DecisionReason)
 	moisture := fixtures.SetData(float64(10), b.MoistureBefore)
 	target := fixtures.SetData(float64(10), b.TargetMoisture)
-	pl, err := ml.NewPredictionLog(id, zone, b.ShouldWater, seconds, reason, moisture, b.WateringExecuted, target)
+	createdAt := fixtures.SetData(time.Now(), b.CreatedAt)
+	pl, err := ml.NewPredictionLog(id, zone, b.ShouldWater, seconds, reason, moisture, b.WateringExecuted, target, createdAt)
 	require.NoError(t, err)
 	return *pl
 }
