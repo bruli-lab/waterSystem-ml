@@ -100,6 +100,8 @@ func run() error {
 
 	trainExecutor := python.NewTrainingExecutor(30*time.Minute, conf.PythonPath, tracer, log)
 	predictionRepo := python.NewPredictionRepository(tracer, conf.PythonPath, 3*time.Minute)
+	dryingTrainExecutor := python.NewDryingTrainingExecutor(10*time.Minute, conf.PythonPath, tracer, log)
+	shadowPredictor := python.NewShadowPredictor(tracer, conf.PythonPath, 3*time.Minute)
 	ntfyPublisher, err := ntfy.NewPublisher(conf.NtfyUser, conf.NtfyPassword, conf.NtfyURL, conf.NtfyTopic, tracer)
 	if err != nil {
 		log.ErrorContext(ctx, "Error creating ntfy publisher", "err", err)
@@ -129,6 +131,9 @@ func run() error {
 		conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer,
 	)
 	modelTrainStateRepo := postgresinfra.NewModelTrainingStateRepository(db, tracer)
+	shadowPredictionRepo := influxdb2.NewShadowPredictionRepository(
+		conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer,
+	)
 
 	loc := buildTimeLocation(ctx, log)
 	calculateWateringHnd := app.NewCalculateWatering(
@@ -175,11 +180,17 @@ func run() error {
 	commandBus.Subscribe(app.CheckFailedModelCommandName, multiCHMdw(checkFailedModelHnd))
 	trainingZoneHnd := app.NewTrainingZone(trainExecutor, modelTrainStateRepo, modelTrainingRepo, time.Now)
 	commandBus.Subscribe(app.TrainingZoneCommandName, logChMiddleware(trainingZoneHnd))
+	commandBus.Subscribe(app.TrainDryingModelCommandName, logChMiddleware(app.NewTrainDryingModel(dryingTrainExecutor)))
+	commandBus.Subscribe(
+		app.RunShadowPredictionCommandName,
+		logChMiddleware(app.NewRunShadowPrediction(shadowPredictor, shadowPredictionRepo, time.Now)),
+	)
 
 	go runValidatePrediction(ctx, commandBus, log)
 
 	go runTrainingZone(ctx, conf, zones.Names(), log, trainCh, commandBus)
 	go runCalculateWatering(ctx, commandBus, log)
+	go runShadowPrediction(ctx, commandBus, log)
 
 	serverListener, err := new(net.ListenConfig).Listen(ctx, "tcp", conf.ServerHost)
 	log.InfoContext(ctx, "Starting server", "host", conf.ServerHost)
@@ -235,6 +246,7 @@ func runTrainingZone(
 	bus cqs.CommandBus,
 ) {
 	initialTraining(ctx, conf, zones, log, bus)
+	initialDryingTraining(ctx, zones, log, bus)
 	log.InfoContext(ctx, "Starting training zone worker")
 	for {
 		select {
@@ -284,6 +296,13 @@ func initialTraining(ctx context.Context, conf *config.Config, zones []string, l
 	executeTraining(ctx, ch, zones)
 }
 
+func initialDryingTraining(ctx context.Context, zones []string, log *slog.Logger, ch cqs.CommandHandler) {
+	defer recoverBackground(ctx, log, "initial drying training")
+	for _, zone := range zones {
+		_, _ = ch.Handle(ctx, app.TrainDryingModelCommand{Zone: zone, IfMissing: true})
+	}
+}
+
 func executeTraining(ctx context.Context, svc cqs.CommandHandler, zones []string) {
 	for _, zone := range zones {
 		_, _ = svc.Handle(ctx, app.TrainingZoneCommand{Zone: zone, Force: true})
@@ -323,6 +342,25 @@ func runCalculateWatering(ctx context.Context, ch cqs.CommandHandler, log *slog.
 				defer cancel()
 				defer recoverBackground(runCtx, log, "calculate watering")
 				_, _ = ch.Handle(runCtx, app.CalculateWateringCommand{})
+			}()
+		}
+	}
+}
+
+func runShadowPrediction(ctx context.Context, ch cqs.CommandHandler, log *slog.Logger) {
+	tick := time.NewTicker(15 * time.Minute)
+	defer tick.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-tick.C:
+			runCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+			func() {
+				defer cancel()
+				defer recoverBackground(runCtx, log, "shadow prediction")
+				_, _ = ch.Handle(runCtx, app.RunShadowPredictionCommand{})
 			}()
 		}
 	}

@@ -1033,3 +1033,225 @@ func (mock *ForecastRepositoryMock) TemperatureAtCalls() []struct {
 	mock.lockTemperatureAt.RUnlock()
 	return calls
 }
+
+// Ensure, that ShadowPredictorMock does implement ShadowPredictor.
+// If this is not the case, regenerate this file with moq.
+var _ ShadowPredictor = &ShadowPredictorMock{}
+
+// ShadowPredictorMock is a mock implementation of ShadowPredictor.
+//
+//	func TestSomethingThatUsesShadowPredictor(t *testing.T) {
+//
+//		// make and configure a mocked ShadowPredictor
+//		mockedShadowPredictor := &ShadowPredictorMock{
+//			PredictFunc: func(ctx context.Context, now time.Time) ([]ml.ShadowPrediction, error) {
+//				panic("mock out the Predict method")
+//			},
+//		}
+//
+//		// use mockedShadowPredictor in code that requires ShadowPredictor
+//		// and then make assertions.
+//
+//	}
+type ShadowPredictorMock struct {
+	// PredictFunc mocks the Predict method.
+	PredictFunc func(ctx context.Context, now time.Time) ([]ml.ShadowPrediction, error)
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// Predict holds details about calls to the Predict method.
+		Predict []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Now is the now argument value.
+			Now time.Time
+		}
+	}
+	lockPredict sync.RWMutex
+}
+
+// Predict calls PredictFunc.
+func (mock *ShadowPredictorMock) Predict(ctx context.Context, now time.Time) ([]ml.ShadowPrediction, error) {
+	if mock.PredictFunc == nil {
+		panic("ShadowPredictorMock.PredictFunc: method is nil but ShadowPredictor.Predict was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Now time.Time
+	}{
+		Ctx: ctx,
+		Now: now,
+	}
+	mock.lockPredict.Lock()
+	mock.calls.Predict = append(mock.calls.Predict, callInfo)
+	mock.lockPredict.Unlock()
+	return mock.PredictFunc(ctx, now)
+}
+
+// PredictCalls gets all the calls that were made to Predict.
+// Check the length with:
+//
+//	len(mockedShadowPredictor.PredictCalls())
+func (mock *ShadowPredictorMock) PredictCalls() []struct {
+	Ctx context.Context
+	Now time.Time
+} {
+	var calls []struct {
+		Ctx context.Context
+		Now time.Time
+	}
+	mock.lockPredict.RLock()
+	calls = mock.calls.Predict
+	mock.lockPredict.RUnlock()
+	return calls
+}
+
+// Ensure, that ShadowPredictionRepositoryMock does implement ShadowPredictionRepository.
+// If this is not the case, regenerate this file with moq.
+var _ ShadowPredictionRepository = &ShadowPredictionRepositoryMock{}
+
+// ShadowPredictionRepositoryMock is a mock implementation of ShadowPredictionRepository.
+//
+//	func TestSomethingThatUsesShadowPredictionRepository(t *testing.T) {
+//
+//		// make and configure a mocked ShadowPredictionRepository
+//		mockedShadowPredictionRepository := &ShadowPredictionRepositoryMock{
+//			SaveFunc: func(ctx context.Context, predictions []ml.ShadowPrediction) error {
+//				panic("mock out the Save method")
+//			},
+//		}
+//
+//		// use mockedShadowPredictionRepository in code that requires ShadowPredictionRepository
+//		// and then make assertions.
+//
+//	}
+type ShadowPredictionRepositoryMock struct {
+	// SaveFunc mocks the Save method.
+	SaveFunc func(ctx context.Context, predictions []ml.ShadowPrediction) error
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// Save holds details about calls to the Save method.
+		Save []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Predictions is the predictions argument value.
+			Predictions []ml.ShadowPrediction
+		}
+	}
+	lockSave sync.RWMutex
+}
+
+// Save calls SaveFunc.
+func (mock *ShadowPredictionRepositoryMock) Save(ctx context.Context, predictions []ml.ShadowPrediction) error {
+	if mock.SaveFunc == nil {
+		panic("ShadowPredictionRepositoryMock.SaveFunc: method is nil but ShadowPredictionRepository.Save was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		Predictions []ml.ShadowPrediction
+	}{
+		Ctx:         ctx,
+		Predictions: predictions,
+	}
+	mock.lockSave.Lock()
+	mock.calls.Save = append(mock.calls.Save, callInfo)
+	mock.lockSave.Unlock()
+	return mock.SaveFunc(ctx, predictions)
+}
+
+// SaveCalls gets all the calls that were made to Save.
+// Check the length with:
+//
+//	len(mockedShadowPredictionRepository.SaveCalls())
+func (mock *ShadowPredictionRepositoryMock) SaveCalls() []struct {
+	Ctx         context.Context
+	Predictions []ml.ShadowPrediction
+} {
+	var calls []struct {
+		Ctx         context.Context
+		Predictions []ml.ShadowPrediction
+	}
+	mock.lockSave.RLock()
+	calls = mock.calls.Save
+	mock.lockSave.RUnlock()
+	return calls
+}
+
+// Ensure, that DryingTrainExecutorMock does implement DryingTrainExecutor.
+// If this is not the case, regenerate this file with moq.
+var _ DryingTrainExecutor = &DryingTrainExecutorMock{}
+
+// DryingTrainExecutorMock is a mock implementation of DryingTrainExecutor.
+//
+//	func TestSomethingThatUsesDryingTrainExecutor(t *testing.T) {
+//
+//		// make and configure a mocked DryingTrainExecutor
+//		mockedDryingTrainExecutor := &DryingTrainExecutorMock{
+//			RunFunc: func(ctx context.Context, zone string, ifMissing bool) error {
+//				panic("mock out the Run method")
+//			},
+//		}
+//
+//		// use mockedDryingTrainExecutor in code that requires DryingTrainExecutor
+//		// and then make assertions.
+//
+//	}
+type DryingTrainExecutorMock struct {
+	// RunFunc mocks the Run method.
+	RunFunc func(ctx context.Context, zone string, ifMissing bool) error
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// Run holds details about calls to the Run method.
+		Run []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Zone is the zone argument value.
+			Zone string
+			// IfMissing is the ifMissing argument value.
+			IfMissing bool
+		}
+	}
+	lockRun sync.RWMutex
+}
+
+// Run calls RunFunc.
+func (mock *DryingTrainExecutorMock) Run(ctx context.Context, zone string, ifMissing bool) error {
+	if mock.RunFunc == nil {
+		panic("DryingTrainExecutorMock.RunFunc: method is nil but DryingTrainExecutor.Run was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		Zone      string
+		IfMissing bool
+	}{
+		Ctx:       ctx,
+		Zone:      zone,
+		IfMissing: ifMissing,
+	}
+	mock.lockRun.Lock()
+	mock.calls.Run = append(mock.calls.Run, callInfo)
+	mock.lockRun.Unlock()
+	return mock.RunFunc(ctx, zone, ifMissing)
+}
+
+// RunCalls gets all the calls that were made to Run.
+// Check the length with:
+//
+//	len(mockedDryingTrainExecutor.RunCalls())
+func (mock *DryingTrainExecutorMock) RunCalls() []struct {
+	Ctx       context.Context
+	Zone      string
+	IfMissing bool
+} {
+	var calls []struct {
+		Ctx       context.Context
+		Zone      string
+		IfMissing bool
+	}
+	mock.lockRun.RLock()
+	calls = mock.calls.Run
+	mock.lockRun.RUnlock()
+	return calls
+}
