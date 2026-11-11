@@ -84,20 +84,11 @@ def train_zone(zone: str) -> bool:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Entrena el model d'assecament d'una zona.")
     parser.add_argument("--zone", required=True, help='Zona a entrenar, per exemple: "Bonsai big".')
-    parser.add_argument("--if-missing", action="store_true", help="Entrena només si la zona no té model.")
     return parser.parse_args()
 
 
-def drying_model_exists(zone: str) -> bool:
-    return os.path.exists(os.path.join(drying_dir(normalize_zone(zone)), "drying_metadata.json"))
-
-
 def main() -> None:
-    args = parse_args()
-    if args.if_missing and drying_model_exists(args.zone):
-        print(f"{args.zone}: ja té model d'assecament", file=sys.stderr)
-        return
-    if not train_zone(args.zone):
+    if not train_zone(parse_args().zone):
         sys.exit(1)
 
 
