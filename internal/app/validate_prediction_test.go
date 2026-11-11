@@ -27,6 +27,8 @@ func TestValidatePrediction_Handle(t *testing.T) {
 		pendingZones                        map[string]bool
 		expectedErr                         error
 		expectedSaves, expectedEvents       int
+		stale                               bool
+		staleErr                            error
 	}{
 		{
 			name:           "and soil measure returns an error, then it returns same error",
@@ -45,6 +47,18 @@ func TestValidatePrediction_Handle(t *testing.T) {
 			pendingZones: map[string]bool{bonsaiBigZone: true},
 			saveErr:      errTest,
 			expectedErr:  errTest,
+		},
+		{
+			name:        "and getting stale predictions fails, then it returns same error",
+			measures:    measures,
+			staleErr:    errTest,
+			expectedErr: errTest,
+		},
+		{
+			name:          "and a prediction is pending for too long, then it is expired",
+			measures:      measures,
+			stale:         true,
+			expectedSaves: 1,
 		},
 		{
 			name:     "and no zone has a pending prediction, then nothing is saved",
@@ -87,6 +101,14 @@ func TestValidatePrediction_Handle(t *testing.T) {
 				SaveFunc: func(_ context.Context, _ *ml.PredictionLog) error {
 					return tt.saveErr
 				},
+				GetPendingBeforeFunc: func(_ context.Context, before time.Time) ([]*ml.PredictionLog, error) {
+					require.Equal(t, fixedNow.Add(-ml.MaxPendingValidationAge), before)
+					if !tt.stale {
+						return nil, tt.staleErr
+					}
+					zone := bonsaiSmallZone
+					return []*ml.PredictionLog{new(fixtures.PredictionLogBuilder{Zone: &zone}.Build(t))}, tt.staleErr
+				},
 			}
 			handler := app.NewValidatePrediction(soilMeasureRepo, predictionLogRepo, clock)
 
@@ -101,6 +123,11 @@ func TestValidatePrediction_Handle(t *testing.T) {
 			require.Len(t, saves, tt.expectedSaves)
 			for _, call := range saves {
 				require.Equal(t, fixedNow, *call.Pl.ValidationAt())
+			}
+			if tt.stale {
+				last := saves[len(saves)-1].Pl
+				require.Equal(t, ml.PredictionLogStatusExpired, last.Status())
+				require.Nil(t, last.MoistureAfter())
 			}
 		})
 	}

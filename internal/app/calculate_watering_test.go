@@ -89,9 +89,8 @@ func TestCalculateWatering_Handle(t *testing.T) {
 			humidityRefErr: errTest,
 		},
 		{
-			name:        "and calculated watering returns error, then it returns same error",
-			expectedErr: ml.ErrUnknownZone,
-			status:      defaultStatus,
+			name:   "and a zone has no execution history, then it is evaluated as not recently watered",
+			status: defaultStatus,
 			executions: ml.Executions{
 				"wrong": ptr.FromPointer(ml.NewExecution("wrong", dayTimeFunc().Add(-5*time.Hour))),
 			},
@@ -99,7 +98,9 @@ func TestCalculateWatering_Handle(t *testing.T) {
 				ptr.FromPointer(ml.NewSoilMeasure(bonsaiBigZone, lowHumidity)),
 				ptr.FromPointer(ml.NewSoilMeasure(bonsaiSmallZone, lowHumidity)),
 			},
-			humRef: defaultHumidityRef,
+			humRef:      defaultHumidityRef,
+			wantEvents:  2,
+			wantReasons: []string{ml.BelowMinThresholdReason, ml.BelowMinThresholdReason},
 		},
 		{
 			name:        "and prediction repository returns error for medium humidity zones, then it returns same error",

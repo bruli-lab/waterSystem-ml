@@ -38,13 +38,48 @@ func (p PredictionLogRepository) GetPendingByZone(ctx context.Context, zone stri
 		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
-	pl := ml.PredictionLog{}
-	st, err := ml.ParsePredictionLogStatus(model.ValidationStatus)
+	pl, err := hydratePredictionLog(model)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
+	return pl, nil
+}
+
+func (p PredictionLogRepository) GetPendingBefore(ctx context.Context, before time.Time) ([]*ml.PredictionLog, error) {
+	ctx, span := p.tracer.Start(ctx, "PredictionLogRepository.GetPendingBefore")
+	defer span.End()
+	var models []modelPrediction
+	err := p.db.NewSelect().
+		Model(&models).
+		Where("validation_at IS NULL").
+		Where("validate_after <= ?", before).
+		Scan(ctx)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, err
+	}
+	logs := make([]*ml.PredictionLog, 0, len(models))
+	for i := range models {
+		pl, err := hydratePredictionLog(&models[i])
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			return nil, err
+		}
+		logs = append(logs, pl)
+	}
+	return logs, nil
+}
+
+func hydratePredictionLog(model *modelPrediction) (*ml.PredictionLog, error) {
+	st, err := ml.ParsePredictionLogStatus(model.ValidationStatus)
+	if err != nil {
+		return nil, err
+	}
+	pl := ml.PredictionLog{}
 	if err := pl.Hydrate(
 		model.ID,
 		model.CreatedAt,
@@ -56,12 +91,10 @@ func (p PredictionLogRepository) GetPendingByZone(ctx context.Context, zone stri
 		model.MoistureBefore,
 		model.WateringExecuted,
 		model.TargetMoisture,
-		nil,
-		nil,
+		model.ValidationAt,
+		model.MoistureAfter,
 		model.ValidateAfter,
 	); err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 	return &pl, nil

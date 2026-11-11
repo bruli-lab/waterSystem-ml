@@ -1,7 +1,6 @@
 package ml
 
 import (
-	"errors"
 	"time"
 
 	"github.com/bruli-lab/go-core/event"
@@ -24,8 +23,6 @@ const (
 
 	SafetyWateringInterval = 6 * time.Hour
 )
-
-var ErrUnknownZone = errors.New("unknown zone")
 
 type CalculatedWatering struct {
 	event.BasicAggregateRoot
@@ -82,17 +79,14 @@ func (c *CalculatedWatering) allowedFromSystem() bool {
 	}
 }
 
-func (c *CalculatedWatering) allowedFromZone(zone string, currentHumidity float64) (bool, error) {
+func (c *CalculatedWatering) allowedFromZone(zone string, currentHumidity float64) bool {
 	ex, ok := c.executions[zone]
-	if !ok {
-		return false, ErrUnknownZone
-	}
-	if ex.IsRecentlyExecuted(c.timeFunc()) {
+	if ok && ex.IsRecentlyExecuted(c.timeFunc()) {
 		c.Record(NewWateringZoneSkippedEvent(zone, ZoneRecentlyExecutedByModelReason, currentHumidity, nil, nil, nil))
 		c.calculatedZones[zone] = true
-		return false, nil
+		return false
 	}
-	return true, nil
+	return true
 }
 
 func (c *CalculatedWatering) isNightRange() bool {
@@ -189,7 +183,7 @@ func NewCalculatedWatering(
 	zonesHumidity []*ZoneHumidity,
 	pendingPredictionLogsZones map[string]bool,
 	ambient AmbientTemperature,
-) (*CalculatedWatering, error) {
+) *CalculatedWatering {
 	calcZones := make(map[string]bool, len(zonesHumidity))
 	zoneHumMap := make(map[string]*ZoneHumidity, len(zonesHumidity))
 	for _, zh := range zonesHumidity {
@@ -208,7 +202,7 @@ func NewCalculatedWatering(
 	}
 
 	if !cw.allowedFromSystem() {
-		return &cw, nil
+		return &cw
 	}
 
 	for _, zh := range zonesHumidity {
@@ -230,11 +224,7 @@ func NewCalculatedWatering(
 			cw.calculatedZones[zh.Zone()] = true
 			continue
 		}
-		allowed, err := cw.allowedFromZone(zone, currentHumidity)
-		if err != nil {
-			return nil, err
-		}
-		if !allowed {
+		if !cw.allowedFromZone(zone, currentHumidity) {
 			continue
 		}
 
@@ -258,5 +248,5 @@ func NewCalculatedWatering(
 		}
 	}
 
-	return &cw, nil
+	return &cw
 }

@@ -62,12 +62,9 @@ func (c *CalculateWatering) calculate(ctx context.Context) (*ml.CalculatedWateri
 		return nil, err
 	}
 
-	cw, err := ml.NewCalculatedWatering(
+	cw := ml.NewCalculatedWatering(
 		st.Raining(), st.Active(), c.now, exec, zoneHum, pendingPredictionLogs, c.ambientTemperature(ctx, st),
 	)
-	if err != nil {
-		return nil, err
-	}
 	if cw.Calculated() {
 		return cw, nil
 	}

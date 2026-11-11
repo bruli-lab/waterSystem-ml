@@ -400,6 +400,9 @@ var _ PredictionLogRepository = &PredictionLogRepositoryMock{}
 //
 //		// make and configure a mocked PredictionLogRepository
 //		mockedPredictionLogRepository := &PredictionLogRepositoryMock{
+//			GetPendingBeforeFunc: func(ctx context.Context, before time.Time) ([]*ml.PredictionLog, error) {
+//				panic("mock out the GetPendingBefore method")
+//			},
 //			GetPendingByZoneFunc: func(ctx context.Context, zone string, limit time.Time) (*ml.PredictionLog, error) {
 //				panic("mock out the GetPendingByZone method")
 //			},
@@ -416,6 +419,9 @@ var _ PredictionLogRepository = &PredictionLogRepositoryMock{}
 //
 //	}
 type PredictionLogRepositoryMock struct {
+	// GetPendingBeforeFunc mocks the GetPendingBefore method.
+	GetPendingBeforeFunc func(ctx context.Context, before time.Time) ([]*ml.PredictionLog, error)
+
 	// GetPendingByZoneFunc mocks the GetPendingByZone method.
 	GetPendingByZoneFunc func(ctx context.Context, zone string, limit time.Time) (*ml.PredictionLog, error)
 
@@ -427,6 +433,13 @@ type PredictionLogRepositoryMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetPendingBefore holds details about calls to the GetPendingBefore method.
+		GetPendingBefore []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Before is the before argument value.
+			Before time.Time
+		}
 		// GetPendingByZone holds details about calls to the GetPendingByZone method.
 		GetPendingByZone []struct {
 			// Ctx is the ctx argument value.
@@ -449,9 +462,46 @@ type PredictionLogRepositoryMock struct {
 			Pl *ml.PredictionLog
 		}
 	}
+	lockGetPendingBefore          sync.RWMutex
 	lockGetPendingByZone          sync.RWMutex
 	lockGetPendingValidationZones sync.RWMutex
 	lockSave                      sync.RWMutex
+}
+
+// GetPendingBefore calls GetPendingBeforeFunc.
+func (mock *PredictionLogRepositoryMock) GetPendingBefore(ctx context.Context, before time.Time) ([]*ml.PredictionLog, error) {
+	if mock.GetPendingBeforeFunc == nil {
+		panic("PredictionLogRepositoryMock.GetPendingBeforeFunc: method is nil but PredictionLogRepository.GetPendingBefore was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Before time.Time
+	}{
+		Ctx:    ctx,
+		Before: before,
+	}
+	mock.lockGetPendingBefore.Lock()
+	mock.calls.GetPendingBefore = append(mock.calls.GetPendingBefore, callInfo)
+	mock.lockGetPendingBefore.Unlock()
+	return mock.GetPendingBeforeFunc(ctx, before)
+}
+
+// GetPendingBeforeCalls gets all the calls that were made to GetPendingBefore.
+// Check the length with:
+//
+//	len(mockedPredictionLogRepository.GetPendingBeforeCalls())
+func (mock *PredictionLogRepositoryMock) GetPendingBeforeCalls() []struct {
+	Ctx    context.Context
+	Before time.Time
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Before time.Time
+	}
+	mock.lockGetPendingBefore.RLock()
+	calls = mock.calls.GetPendingBefore
+	mock.lockGetPendingBefore.RUnlock()
+	return calls
 }
 
 // GetPendingByZone calls GetPendingByZoneFunc.

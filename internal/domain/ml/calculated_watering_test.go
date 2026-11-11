@@ -93,7 +93,6 @@ func TestNewCalculatedWatering(t *testing.T) {
 		expectedPendingZones       []string
 		expectedEvents             []event.Event
 		expectedReasons            []string
-		expectedErr                error
 	}{
 		{
 			name:            "raining skips the whole system before checking zones",
@@ -348,7 +347,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "unknown execution zone returns error",
+			name:            "zone without execution history is evaluated as not recently watered",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
 			exec: ml.Executions{
@@ -357,7 +356,13 @@ func TestNewCalculatedWatering(t *testing.T) {
 			zonesHumidity: []*ml.ZoneHumidity{
 				zoneHumidity(bonsaiBigZone, lowHumidity),
 			},
-			expectedErr: ml.ErrUnknownZone,
+			expectedCalculated: true,
+			expectedEvents: []event.Event{
+				&ml.WateringRequestedEvent{},
+			},
+			expectedReasons: []string{
+				ml.BelowMinThresholdReason,
+			},
 		},
 	}
 
@@ -365,7 +370,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := ml.NewCalculatedWatering(
+			got := ml.NewCalculatedWatering(
 				tt.isRaining,
 				tt.systemActivated,
 				tt.timeFunc,
@@ -375,12 +380,6 @@ func TestNewCalculatedWatering(t *testing.T) {
 				tt.ambient,
 			)
 
-			if tt.expectedErr != nil {
-				require.ErrorIs(t, err, tt.expectedErr)
-				return
-			}
-
-			require.NoError(t, err)
 			require.Equal(t, tt.expectedCalculated, got.Calculated())
 			require.ElementsMatch(t, tt.expectedPendingZones, got.PendingPredictionZones())
 
@@ -451,7 +450,7 @@ func TestCalculatedWatering_FromPrediction(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			cw, err := ml.NewCalculatedWatering(
+			cw := ml.NewCalculatedWatering(
 				false,
 				true,
 				dayTimeFunc,
@@ -463,7 +462,6 @@ func TestCalculatedWatering_FromPrediction(t *testing.T) {
 				map[string]bool{},
 				ml.NewAmbientTemperature(nil, nil),
 			)
-			require.NoError(t, err)
 			require.False(t, cw.Calculated())
 
 			cw.FromPrediction(tt.pred, tt.zh)

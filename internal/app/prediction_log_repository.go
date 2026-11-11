@@ -11,4 +11,5 @@ type PredictionLogRepository interface {
 	Save(ctx context.Context, pl *ml.PredictionLog) error
 	GetPendingByZone(ctx context.Context, zone string, limit time.Time) (*ml.PredictionLog, error)
 	GetPendingValidationZones(ctx context.Context) (map[string]bool, error)
+	GetPendingBefore(ctx context.Context, before time.Time) ([]*ml.PredictionLog, error)
 }
