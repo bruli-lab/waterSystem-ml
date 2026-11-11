@@ -21,6 +21,7 @@ func TestCheckFailedModel_Handle(t *testing.T) {
 		modelTrainingState                             *ml.ModelTrainingState
 		expectedEvents                                 int
 		expectedHealthCalls                            int
+		expectedSince                                  time.Time
 	}{
 		{
 			name:                "and get training state returns an error, then it returns same error",
@@ -49,6 +50,7 @@ func TestCheckFailedModel_Handle(t *testing.T) {
 			modelHealth:         ml.NewModelHealth(bonsaiBigZone, 10, 10),
 			expectedEvents:      1,
 			expectedHealthCalls: 1,
+			expectedSince:       fixedNow.Add(-50 * time.Hour),
 		},
 	}
 	for _, tt := range tests {
@@ -56,7 +58,7 @@ func TestCheckFailedModel_Handle(t *testing.T) {
 		when Handle method is called `+tt.name, func(t *testing.T) {
 			t.Parallel()
 			healthRepo := &app.ModelHealthRepositoryMock{
-				GetModelHealthFunc: func(_ context.Context, _ string) (*ml.ModelHealth, error) {
+				GetModelHealthFunc: func(_ context.Context, _ string, _ time.Time) (*ml.ModelHealth, error) {
 					return tt.modelHealth, tt.getHealthErr
 				},
 			}
@@ -74,7 +76,11 @@ func TestCheckFailedModel_Handle(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.Len(t, events, tt.expectedEvents)
-			require.Len(t, healthRepo.GetModelHealthCalls(), tt.expectedHealthCalls)
+			calls := healthRepo.GetModelHealthCalls()
+			require.Len(t, calls, tt.expectedHealthCalls)
+			for _, call := range calls {
+				require.Equal(t, tt.expectedSince, call.Since)
+			}
 		})
 	}
 }

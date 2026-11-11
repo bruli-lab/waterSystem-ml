@@ -24,10 +24,11 @@ func TestPredictionLogRepository(t *testing.T) {
 		require.NoError(t, err)
 		db := bun.NewDB(sqldb, pgdialect.New())
 		zone := uuid.NewString()
+		createdAt := time.Now()
 		repo := postgres.NewPredictionLogRepository(db, noop.NewTracerProvider().Tracer("test"))
 		t.Run(`when Save method is called,
 		then it insert data and returns nil error`, func(t *testing.T) {
-			err = repo.Save(t.Context(), new(fixtures.PredictionLogBuilder{Zone: new(zone)}.Build(t)))
+			err = repo.Save(t.Context(), new(fixtures.PredictionLogBuilder{Zone: new(zone), CreatedAt: &createdAt}.Build(t)))
 			require.NoError(t, err)
 		})
 		t.Run(`when GetPendingValidationZones method is called,
@@ -39,13 +40,13 @@ func TestPredictionLogRepository(t *testing.T) {
 		t.Run(`when GetPendingByZone method is called `, func(t *testing.T) {
 			t.Run(`and does not exists, 
 			then it should return a prediction log not found error`, func(t *testing.T) {
-				got, err := repo.GetPendingByZone(t.Context(), zone, time.Now().Add(-10*time.Minute))
+				got, err := repo.GetPendingByZone(t.Context(), zone, createdAt.Add(time.Minute))
 				require.Nil(t, got)
 				require.ErrorIs(t, err, ml.ErrPredictionLogNotFound)
 			})
 			t.Run(`and exists, 
 			then it should return a prediction log`, func(t *testing.T) {
-				got, err := repo.GetPendingByZone(t.Context(), zone, time.Now().Add(1*time.Minute))
+				got, err := repo.GetPendingByZone(t.Context(), zone, createdAt.Add(16*time.Minute))
 				require.NoError(t, err)
 				require.NotNil(t, got)
 			})

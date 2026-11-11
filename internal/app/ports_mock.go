@@ -528,7 +528,7 @@ var _ ModelHealthRepository = &ModelHealthRepositoryMock{}
 //
 //		// make and configure a mocked ModelHealthRepository
 //		mockedModelHealthRepository := &ModelHealthRepositoryMock{
-//			GetModelHealthFunc: func(ctx context.Context, zone string) (*ml.ModelHealth, error) {
+//			GetModelHealthFunc: func(ctx context.Context, zone string, since time.Time) (*ml.ModelHealth, error) {
 //				panic("mock out the GetModelHealth method")
 //			},
 //		}
@@ -539,7 +539,7 @@ var _ ModelHealthRepository = &ModelHealthRepositoryMock{}
 //	}
 type ModelHealthRepositoryMock struct {
 	// GetModelHealthFunc mocks the GetModelHealth method.
-	GetModelHealthFunc func(ctx context.Context, zone string) (*ml.ModelHealth, error)
+	GetModelHealthFunc func(ctx context.Context, zone string, since time.Time) (*ml.ModelHealth, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -549,27 +549,31 @@ type ModelHealthRepositoryMock struct {
 			Ctx context.Context
 			// Zone is the zone argument value.
 			Zone string
+			// Since is the since argument value.
+			Since time.Time
 		}
 	}
 	lockGetModelHealth sync.RWMutex
 }
 
 // GetModelHealth calls GetModelHealthFunc.
-func (mock *ModelHealthRepositoryMock) GetModelHealth(ctx context.Context, zone string) (*ml.ModelHealth, error) {
+func (mock *ModelHealthRepositoryMock) GetModelHealth(ctx context.Context, zone string, since time.Time) (*ml.ModelHealth, error) {
 	if mock.GetModelHealthFunc == nil {
 		panic("ModelHealthRepositoryMock.GetModelHealthFunc: method is nil but ModelHealthRepository.GetModelHealth was just called")
 	}
 	callInfo := struct {
-		Ctx  context.Context
-		Zone string
+		Ctx   context.Context
+		Zone  string
+		Since time.Time
 	}{
-		Ctx:  ctx,
-		Zone: zone,
+		Ctx:   ctx,
+		Zone:  zone,
+		Since: since,
 	}
 	mock.lockGetModelHealth.Lock()
 	mock.calls.GetModelHealth = append(mock.calls.GetModelHealth, callInfo)
 	mock.lockGetModelHealth.Unlock()
-	return mock.GetModelHealthFunc(ctx, zone)
+	return mock.GetModelHealthFunc(ctx, zone, since)
 }
 
 // GetModelHealthCalls gets all the calls that were made to GetModelHealth.
@@ -577,12 +581,14 @@ func (mock *ModelHealthRepositoryMock) GetModelHealth(ctx context.Context, zone 
 //
 //	len(mockedModelHealthRepository.GetModelHealthCalls())
 func (mock *ModelHealthRepositoryMock) GetModelHealthCalls() []struct {
-	Ctx  context.Context
-	Zone string
+	Ctx   context.Context
+	Zone  string
+	Since time.Time
 } {
 	var calls []struct {
-		Ctx  context.Context
-		Zone string
+		Ctx   context.Context
+		Zone  string
+		Since time.Time
 	}
 	mock.lockGetModelHealth.RLock()
 	calls = mock.calls.GetModelHealth

@@ -52,10 +52,14 @@ func (c CheckFailedModel) check(ctx context.Context, zone string) ([]event.Event
 	if err != nil && !errors.Is(err, ml.ErrModelPredictionStateNotFound) {
 		return nil, err
 	}
-	if mts != nil && mts.IsRecentlyTraining(c.now()) {
-		return nil, nil
+	var lastTrainingAt time.Time
+	if mts != nil {
+		if mts.IsRecentlyTraining(c.now()) {
+			return nil, nil
+		}
+		lastTrainingAt = mts.TrainingAt()
 	}
-	modelHealth, err := c.modelHealthRepo.GetModelHealth(ctx, zone)
+	modelHealth, err := c.modelHealthRepo.GetModelHealth(ctx, zone, lastTrainingAt)
 	if err != nil {
 		return nil, err
 	}

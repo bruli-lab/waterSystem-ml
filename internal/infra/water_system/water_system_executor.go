@@ -53,14 +53,14 @@ func (e *Executor) GetStatus(ctx context.Context) (*ml.Status, error) {
 	req.Header.Add("Content-Type", "application/json")
 
 	resp, err := e.cl.Do(req)
-	defer func() {
-		_ = resp.Body.Close()
-	}()
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return nil, fmt.Errorf("error executing request: %w", err)
 	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		err := fmt.Errorf("error executing request: %s", resp.Status)
@@ -113,14 +113,14 @@ func (e *Executor) Execute(ctx context.Context, w *watering.Watering) error {
 	req.Header.Add("Authorization", e.token)
 
 	resp, err := e.cl.Do(req)
-	defer func() {
-		_ = resp.Body.Close()
-	}()
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return fmt.Errorf("error executing request: %w", err)
 	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		err := fmt.Errorf("error executing request: %s", resp.Status)

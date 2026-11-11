@@ -20,22 +20,16 @@ func (e ExecuteWateringOnWateringRequested) Listen(ctx context.Context, ev event
 	if !ok {
 		return fmt.Errorf("invalid event type: %T", ev)
 	}
-	var executed bool
-	defer func() {
-		e.savePredictionLog(ctx, swr, executed)
-	}()
-	if _, err := e.ch.Handle(ctx, app.ExecuteWateringCommand{
+	_, err := e.ch.Handle(ctx, app.ExecuteWateringCommand{
 		Zone:    swr.Zone,
 		Seconds: int(swr.Seconds),
-	}); err != nil {
-		defer func() {
-			_, _ = e.ch.Handle(ctx, app.PublishMessageCommand{
-				Message: fmt.Sprintf("error executing watering on zone %s: %s", swr.Zone, err.Error()),
-			})
-		}()
-		return fmt.Errorf("error executing watering: %w", err)
+	})
+	e.savePredictionLog(ctx, swr, err == nil)
+	if err != nil {
+		_, _ = e.ch.Handle(ctx, app.PublishMessageCommand{
+			Message: fmt.Sprintf("error executing watering on zone %s: %s", swr.Zone, err.Error()),
+		})
 	}
-	executed = true
 	return nil
 }
 

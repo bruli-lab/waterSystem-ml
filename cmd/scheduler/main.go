@@ -54,6 +54,7 @@ func run() error {
 	sqlDB, err := sql.Open("postgres", conf.PostgresDataSource())
 	if err != nil {
 		log.ErrorContext(ctx, "Error connecting to database", "err", err)
+		return err
 	}
 	defer func() {
 		_ = sqlDB.Close()
