@@ -13,6 +13,12 @@ resources:
   - externalsecret-watersystem.yaml
   - externalsecret-ghrc.yaml
 
+configMapGenerator:
+  - name: watersystem-ml-zones
+    namespace: watersystem-ml
+    files:
+      - zones.json
+
 commonLabels:
   app.kubernetes.io/part-of: watersystem-ml
 

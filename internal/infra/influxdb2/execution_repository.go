@@ -3,6 +3,7 @@ package influxdb2
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
 	influxdb "github.com/influxdata/influxdb-client-go/v2"
@@ -12,24 +13,27 @@ import (
 
 type ExecutionRepository struct {
 	client influxdb.Client
+	zones  []string
 	org    string
 	bucket string
 	tracer trace.Tracer
 }
 
-func (e ExecutionRepository) GetLastExecution(ctx context.Context) (ml.Executions, error) {
+func (e *ExecutionRepository) GetLastExecution(ctx context.Context) (ml.Executions, error) {
 	ctx, span := e.tracer.Start(ctx, "ExecutionRepository.GetLastExecution")
 	defer span.End()
-	query := `
-from(bucket: "bonsai-data")
+	query := fmt.Sprintf(`
+zones = %s
+
+from(bucket: %q)
   |> range(start: -7d)
   |> filter(fn: (r) => r._measurement == "logs")
   |> filter(fn: (r) => r._field == "seconds")
-  |> filter(fn: (r) => r.zone == "Bonsai big" or r.zone == "Bonsai small")
+  |> filter(fn: (r) => contains(set: zones, value: r.zone))
   |> group(columns: ["zone"])
   |> last()
   |> keep(columns: ["_time", "zone"])
-`
+`, fluxStringArray(e.zones), e.bucket)
 
 	result, err := e.client.QueryAPI(e.org).Query(ctx, query)
 	if err != nil {
@@ -61,7 +65,7 @@ from(bucket: "bonsai-data")
 	return lastWatering, nil
 }
 
-func NewExecutionRepository(url, token, org, bucket string, tracer trace.Tracer) *ExecutionRepository {
+func NewExecutionRepository(url, token, org, bucket string, zones []string, tracer trace.Tracer) *ExecutionRepository {
 	client := influxdb.NewClient(url, token)
-	return &ExecutionRepository{client: client, org: org, bucket: bucket, tracer: tracer}
+	return &ExecutionRepository{client: client, zones: slices.Clone(zones), org: org, bucket: bucket, tracer: tracer}
 }

@@ -8,9 +8,10 @@ import time
 import numpy as np
 import pandas as pd
 
-from data_loader import load_available_zones, load_prediction_data
+from data_loader import load_prediction_data
 from features import build_prediction_dataset
 from model_io import load_models_for_zone, slugify_zone
+from zones import zone_names
 
 MIN_SECONDS = 13.0
 MAX_SECONDS = 60.0
@@ -250,7 +251,7 @@ def main():
     else:
         zones_started_at = checkpoint("loading available zones")
         try:
-            zones = load_available_zones(start="-180d")
+            zones = zone_names()
         except Exception as exc:
             checkpoint(f"error loading zones: {exc}", zones_started_at)
             raise

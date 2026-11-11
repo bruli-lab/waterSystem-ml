@@ -53,6 +53,17 @@ func run() error {
 	}
 	log := buildLog(conf.LogLevel)
 
+	zones, err := config.LoadZones(conf.ZonesFile)
+	if err != nil {
+		log.ErrorContext(ctx, "Error loading zones", "err", err)
+		return err
+	}
+	humidityReferences, err := buildHumidityReferences(zones, time.Now())
+	if err != nil {
+		log.ErrorContext(ctx, "Error building humidity references", "err", err)
+		return err
+	}
+
 	sqlDB, err := sql.Open("postgres", conf.PostgresDataSource())
 	if err != nil {
 		log.ErrorContext(ctx, "Error connecting to database", "err", err)
@@ -95,7 +106,7 @@ func run() error {
 		return err
 	}
 	soilMeasureRepo := influxdb2.NewSoilMeasureRepository(
-		conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer,
+		conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, zones.MoistureVoltageMeasurements(), tracer,
 	)
 	waterSystemExecutor, err := watersystem.NewExecutor(
 		ctx, 5*time.Second, tracer, conf.WaterSystemHost, conf.WaterSystemPort, conf.WaterSystemToken, log,
@@ -105,8 +116,10 @@ func run() error {
 		return err
 	}
 	forecastRepo := influxdb2.NewForecastRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
-	executionRepo := influxdb2.NewExecutionRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
-	humidityRepo := memory.NewHumidityReferenceRepository(conf.BonsaiBigV100, conf.BonsaiBigV40, conf.BonsaiSmallV100, conf.BonsaiSmallV40)
+	executionRepo := influxdb2.NewExecutionRepository(
+		conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, zones.Names(), tracer,
+	)
+	humidityRepo := memory.NewHumidityReferenceRepository(humidityReferences)
 	waterSkippedLogRepo := influxdb2.NewWateringSkippedLogRepository(
 		conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer,
 	)
@@ -165,7 +178,7 @@ func run() error {
 
 	go runValidatePrediction(ctx, commandBus, log)
 
-	go runTrainingZone(ctx, conf, log, trainCh, commandBus)
+	go runTrainingZone(ctx, conf, zones.Names(), log, trainCh, commandBus)
 	go runCalculateWatering(ctx, commandBus, log)
 
 	serverListener, err := new(net.ListenConfig).Listen(ctx, "tcp", conf.ServerHost)
@@ -192,6 +205,18 @@ func run() error {
 	}
 }
 
+func buildHumidityReferences(zones config.Zones, now time.Time) (map[string]*ml.HumidityReference, error) {
+	references := make(map[string]*ml.HumidityReference, len(zones))
+	for _, zone := range zones {
+		calibration, ok := zone.CalibrationAt(now)
+		if !ok {
+			return nil, fmt.Errorf("zone %q has no calibration valid at %s", zone.Name, now.Format(time.DateOnly))
+		}
+		references[zone.Name] = ml.NewHumidityReference(calibration.V40, calibration.V100)
+	}
+	return references, nil
+}
+
 func buildTimeLocation(ctx context.Context, log *slog.Logger) *time.Location {
 	loc, err := time.LoadLocation("Europe/Madrid")
 	if err != nil {
@@ -204,11 +229,12 @@ func buildTimeLocation(ctx context.Context, log *slog.Logger) *time.Location {
 func runTrainingZone(
 	ctx context.Context,
 	conf *config.Config,
+	zones []string,
 	log *slog.Logger,
 	ch <-chan struct{ Zone string },
 	bus cqs.CommandBus,
 ) {
-	initialTraining(ctx, conf, log, bus)
+	initialTraining(ctx, conf, zones, log, bus)
 	log.InfoContext(ctx, "Starting training zone worker")
 	for {
 		select {
@@ -241,7 +267,7 @@ func runValidatePrediction(ctx context.Context, bus cqs.CommandBus, log *slog.Lo
 	}
 }
 
-func initialTraining(ctx context.Context, conf *config.Config, log *slog.Logger, ch cqs.CommandHandler) {
+func initialTraining(ctx context.Context, conf *config.Config, zones []string, log *slog.Logger, ch cqs.CommandHandler) {
 	defer recoverBackground(ctx, log, "initial training")
 	exists, empty, err := checkDir(conf.ModelDir)
 	if err != nil {
@@ -255,14 +281,10 @@ func initialTraining(ctx context.Context, conf *config.Config, log *slog.Logger,
 	}
 
 	log.InfoContext(ctx, "Model dir is empty or does not exist, run initial training")
-	executeTraining(ctx, ch)
+	executeTraining(ctx, ch, zones)
 }
 
-func executeTraining(ctx context.Context, svc cqs.CommandHandler) {
-	zones := []string{
-		"Bonsai big",
-		"Bonsai small",
-	}
+func executeTraining(ctx context.Context, svc cqs.CommandHandler, zones []string) {
 	for _, zone := range zones {
 		_, _ = svc.Handle(ctx, app.TrainingZoneCommand{Zone: zone, Force: true})
 	}

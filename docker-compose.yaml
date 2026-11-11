@@ -25,10 +25,7 @@ services:
         - NTFY_TOPIC=ws-ml
         - NTFY_USER=user
         - NTFY_PASSWORD=password
-        - BONSAI_BIG_V100=1.350
-        - BONSAI_BIG_V40=1.600
-        - BONSAI_SMALL_V100=1.350
-        - BONSAI_SMALL_V40=1.600
+        - ZONES_FILE=/app/manifests/zones.json
         - WATER_SYSTEM_HOST=http://mockserver
         - WATER_SYSTEM_PORT=1080
         - WATER_SYSTEM_TOKEN=token

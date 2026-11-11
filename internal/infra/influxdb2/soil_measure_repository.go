@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/bruli-lab/go-core/ptr"
 	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
@@ -12,36 +14,29 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-var zones = map[string]string{
-	"sensor.bonsai_big_bonsai_big_soil_moisture_voltage":     "Bonsai big",
-	"sensor.bonsai_small_bonsai_small_soil_moisture_voltage": "Bonsai small",
-}
-
 type SoilMeasureRepository struct {
-	client influxdb.Client
-	org    string
-	bucket string
-	tracer trace.Tracer
+	client       influxdb.Client
+	measurements map[string]string
+	org          string
+	bucket       string
+	tracer       trace.Tracer
 }
 
 func (s SoilMeasureRepository) Get(ctx context.Context) ([]ml.SoilMeasure, error) {
 	ctx, span := s.tracer.Start(ctx, "SoilMeasureRepository.Get")
 	defer span.End()
 
-	query := `
-measurements = [
-  "sensor.bonsai_big_bonsai_big_soil_moisture_voltage",
-  "sensor.bonsai_small_bonsai_small_soil_moisture_voltage"
-]
+	query := fmt.Sprintf(`
+measurements = %s
 
-from(bucket: "bonsai-data")
+from(bucket: %q)
   |> range(start: -40m)
   |> filter(fn: (r) => contains(set: measurements, value: r._measurement))
   |> filter(fn: (r) => r._field == "value")
   |> filter(fn: (r) => r._value >= 0.5 and r._value <= 3.3)
   |> group(columns: ["_measurement"])
   |> median()
-`
+`, fluxStringArray(slices.Sorted(maps.Keys(s.measurements))), s.bucket)
 
 	result, err := s.client.QueryAPI(s.org).Query(ctx, query)
 	if err != nil {
@@ -63,7 +58,7 @@ from(bucket: "bonsai-data")
 			return nil, err
 		}
 
-		zone, ok := zones[measurement]
+		zone, ok := s.measurements[measurement]
 		if !ok {
 			err := fmt.Errorf("invalid zone: %s", measurement)
 			span.SetStatus(codes.Error, err.Error())
@@ -92,7 +87,11 @@ from(bucket: "bonsai-data")
 	return measures, nil
 }
 
-func NewSoilMeasureRepository(url, token, org, bucket string, tracer trace.Tracer) *SoilMeasureRepository {
+func NewSoilMeasureRepository(
+	url, token, org, bucket string, measurements map[string]string, tracer trace.Tracer,
+) *SoilMeasureRepository {
 	client := influxdb.NewClient(url, token)
-	return &SoilMeasureRepository{client: client, org: org, bucket: bucket, tracer: tracer}
+	return &SoilMeasureRepository{
+		client: client, measurements: maps.Clone(measurements), org: org, bucket: bucket, tracer: tracer,
+	}
 }

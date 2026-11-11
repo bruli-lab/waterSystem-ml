@@ -35,10 +35,6 @@ func (h HumidityReferenceRepository) Zones(ctx context.Context) ([]string, error
 	return slices.Sorted(maps.Keys(h.references)), nil
 }
 
-func NewHumidityReferenceRepository(bb100, bb40, bs100, bs40 float64) *HumidityReferenceRepository {
-	refMap := map[string]*ml.HumidityReference{
-		"Bonsai big":   ml.NewHumidityReference(bb40, bb100),
-		"Bonsai small": ml.NewHumidityReference(bs40, bs100),
-	}
-	return &HumidityReferenceRepository{references: refMap}
+func NewHumidityReferenceRepository(references map[string]*ml.HumidityReference) *HumidityReferenceRepository {
+	return &HumidityReferenceRepository{references: maps.Clone(references)}
 }

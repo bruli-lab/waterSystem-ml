@@ -6,3 +6,4 @@ tmp/
 coverage.out
 /manifests/secret-ghcr.yaml
 TODO.md
+docs
