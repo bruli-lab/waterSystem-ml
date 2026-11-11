@@ -31,6 +31,7 @@ ENV PYTHONUNBUFFERED=1
 ENV HOME=/home/watersystem
 
 RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         tzdata \
@@ -39,7 +40,8 @@ RUN apt-get update \
 COPY python/requirements.txt /app/python/requirements.txt
 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --no-cache-dir -r /app/python/requirements.txt
+    pip install --no-cache-dir -r /app/python/requirements.txt \
+    && pip uninstall -y pip
 
 COPY python /app/python
 
