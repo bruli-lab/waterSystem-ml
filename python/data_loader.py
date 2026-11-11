@@ -146,10 +146,11 @@ from(bucket: "{INFLUXDB_BUCKET}")
     return df[["_time", "temperature", "weather_is_raining_last"]].sort_values("_time")
 
 
-def load_forecast_data(start: str = "-90d") -> pd.DataFrame:
+def load_forecast_data(start: str = "-90d", stop: Optional[str] = None) -> pd.DataFrame:
+    stop_clause = f", stop: {stop}" if stop else ""
     query = f'''
 from(bucket: "{INFLUXDB_BUCKET}")
-  |> range(start: {start})
+  |> range(start: {start}{stop_clause})
   |> filter(fn: (r) => r._measurement == "forecast_v2")
   |> filter(fn: (r) =>
       r._field == "temperature" or
@@ -234,7 +235,7 @@ from(bucket: "{INFLUXDB_BUCKET}")
     ].sort_values(["_time", "forecast_generated_at"])
 
 
-def load_soil_moisture_data(zone: Optional[str] = None, start: str = "-90d") -> pd.DataFrame:
+def load_soil_moisture_data(zone: Optional[str] = None, start: str = "-90d", clip: bool = True) -> pd.DataFrame:
     zones = [z for z in load_zones() if not zone or z.name == normalize_zone(zone)]
     empty = pd.DataFrame(columns=["_time", "zone", "soil_moisture"])
     if not zones:
@@ -268,7 +269,8 @@ from(bucket: "{INFLUXDB_BUCKET}")
         if zone_df.empty:
             continue
         zone_df["zone"] = z.name
-        zone_df["soil_moisture"] = voltages_to_percentage(zone_df, z).clip(lower=0.0, upper=100.0)
+        percentage = voltages_to_percentage(zone_df, z)
+        zone_df["soil_moisture"] = percentage.clip(lower=0.0, upper=100.0) if clip else percentage
         parts.append(zone_df.dropna(subset=["soil_moisture"])[["_time", "zone", "soil_moisture"]])
 
     if not parts:
