@@ -14,6 +14,7 @@ const (
 	BelowMinThresholdReason           = "below_min_threshold"
 	ModelPredictionReason             = "model_prediction"
 	ModelNotEstimatedReason           = "model_not_estimated"
+	PredictionErrorReason             = "prediction_error"
 	ZoneRecentlyExecutedByModelReason = "zone_recently_executed_by_model"
 	IsNightRangeReason                = "is_night_range"
 
@@ -106,6 +107,19 @@ func (c *CalculatedWatering) FromPrediction(pred *Prediction, zh *ZoneHumidity) 
 	}
 
 	c.calculatedZones[pred.Zone()] = true
+
+	if pred.Failed() {
+		errorMessage := pred.ErrorMessage()
+		c.Record(NewWateringZoneSkippedEvent(
+			pred.Zone(),
+			PredictionErrorReason,
+			zh.CurrentHumidity(),
+			nil,
+			&errorMessage,
+			nil,
+		))
+		return
+	}
 
 	predictionID := pred.ID()
 	decisionReason := pred.DecisionReason()

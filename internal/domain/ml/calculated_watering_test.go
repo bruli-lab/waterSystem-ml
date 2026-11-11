@@ -314,6 +314,17 @@ func TestCalculatedWatering_FromPrediction(t *testing.T) {
 			},
 		},
 		{
+			name: "failed prediction skips zone with prediction error reason",
+			pred: ml.NewFailedPrediction(uuid.New(), bonsaiBigZone, "Error loading model: boom"),
+			zh:   zoneHumidity(bonsaiBigZone, mediumHumidity),
+			expectedEvents: []event.Event{
+				&ml.WateringZoneSkippedEvent{},
+			},
+			expectedReasons: []string{
+				ml.PredictionErrorReason,
+			},
+		},
+		{
 			name: "nil prediction does nothing",
 			pred: nil,
 			zh:   zoneHumidity(bonsaiBigZone, mediumHumidity),

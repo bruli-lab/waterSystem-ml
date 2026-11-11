@@ -27,11 +27,12 @@ type Prediction struct {
 	SoilMoisture                     float64 `json:"soil_moisture"`
 	SoilTemperature                  float64 `json:"soil_temperature"`
 	SoilMoistureDiff                 float64 `json:"soil_moisture_diff"`
-	WateringProba                    float64 `json:"watering_proba"`
+	Probability                      float64 `json:"probability"`
 	RawPredictedSeconds              float64 `json:"raw_predicted_seconds"`
 	ShouldWater                      bool    `json:"should_water"`
 	PredictedSeconds                 float64 `json:"predicted_seconds"`
 	DecisionReason                   string  `json:"decision_reason"`
+	Error                            string  `json:"error"`
 }
 
 func parsePredictions(output string) ([]Prediction, error) {
@@ -73,7 +74,11 @@ func buildPredictionsDomain(predictions []Prediction) []ml.Prediction {
 
 	for i := range predictions {
 		p := &predictions[i]
-		prediction := ml.NewPrediction(uuid.New(), p.Zone, p.ShouldWater, p.PredictedSeconds, p.DecisionReason, p.WateringProba)
+		if p.Error != "" {
+			pred[i] = *ml.NewFailedPrediction(uuid.New(), p.Zone, p.Error)
+			continue
+		}
+		prediction := ml.NewPrediction(uuid.New(), p.Zone, p.ShouldWater, p.PredictedSeconds, p.DecisionReason, p.Probability)
 		pred[i] = *prediction
 	}
 	return pred

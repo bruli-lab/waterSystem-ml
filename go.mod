@@ -1,6 +1,6 @@
 module github.com/bruli-lab/watersystem-ml
 
-go 1.27.0
+go 1.27.4
 
 require (
 	github.com/bruli-lab/go-core v1.8.0
