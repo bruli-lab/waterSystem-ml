@@ -211,7 +211,6 @@ func TestCalculateWatering_Handle(t *testing.T) {
 				predictionLogRepo,
 				statusRepo,
 				dayTimeFunc,
-				buildTracer(),
 			)
 			events, err := handler.Handle(t.Context(), app.CalculateWateringCommand{})
 

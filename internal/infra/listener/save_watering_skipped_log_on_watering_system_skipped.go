@@ -19,8 +19,9 @@ func (s SaveWateringSkippedLogOnWateringSystemSkipped) Listen(ctx context.Contex
 	if !ok {
 		return fmt.Errorf("invalid event type: %T", ev)
 	}
-	_, _ = s.ch.Handle(ctx, &app.SaveWateringSkippedLogCommand{
-		Reason: wsk.Reason,
+	_, _ = s.ch.Handle(ctx, app.SaveWateringSkippedLogCommand{
+		Reason:     wsk.Reason,
+		ExecutedAt: wsk.EventAt(),
 	})
 	return nil
 }

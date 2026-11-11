@@ -47,6 +47,7 @@ func (p PredictionLogRepository) GetPendingByZone(ctx context.Context, zone stri
 	}
 	if err := pl.Hydrate(
 		model.ID,
+		model.CreatedAt,
 		model.Zone,
 		st,
 		model.ShouldWater,
@@ -67,7 +68,7 @@ func (p PredictionLogRepository) GetPendingByZone(ctx context.Context, zone stri
 }
 
 func (p PredictionLogRepository) GetPendingValidationZones(ctx context.Context) (map[string]bool, error) {
-	ctx, span := p.tracer.Start(ctx, "PredictionLogRepository.IsPendingValidationByZone")
+	ctx, span := p.tracer.Start(ctx, "PredictionLogRepository.GetPendingValidationZones")
 	defer span.End()
 	var predictions []modelPrediction
 
@@ -112,7 +113,7 @@ func (p PredictionLogRepository) Save(ctx context.Context, pl *ml.PredictionLog)
 func buildModel(pl *ml.PredictionLog) *modelPrediction {
 	return &modelPrediction{
 		BaseModel:        bun.BaseModel{},
-		ID:               pl.Id(),
+		ID:               pl.ID(),
 		CreatedAt:        pl.CreatedAt(),
 		Zone:             pl.Zone(),
 		ShouldWater:      pl.ShouldWater(),

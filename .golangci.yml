@@ -126,6 +126,10 @@ linters:
         linters:
           - dupl
           - forcetypeassert
+      - path: internal/app/
+        linters:
+          - gocritic
+        text: "hugeParam: \\w+ is heavy"
       - path: internal/infra/python/command\.go
         linters:
           - gosec

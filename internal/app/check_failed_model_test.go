@@ -30,13 +30,13 @@ func TestCheckFailedModel_Handle(t *testing.T) {
 		},
 		{
 			name:                "and get model health returns an error, then it returns same error",
-			getTrainingStateErr: ml.ErrModelPredictionStateNotFound,
+			getTrainingStateErr: ml.ErrModelTrainingStateNotFound,
 			getHealthErr:        errTest,
 			expectedErr:         errTest,
 		},
 		{
 			name:                "and there is no training state and the model is healthy, then it returns no events",
-			getTrainingStateErr: ml.ErrModelPredictionStateNotFound,
+			getTrainingStateErr: ml.ErrModelTrainingStateNotFound,
 			modelHealth:         ml.NewModelHealth(bonsaiBigZone, 19, 1),
 			expectedHealthCalls: 1,
 		},
@@ -67,7 +67,7 @@ func TestCheckFailedModel_Handle(t *testing.T) {
 					return tt.modelTrainingState, tt.getTrainingStateErr
 				},
 			}
-			handler := app.NewCheckFailedModel(healthRepo, stateRepo, clock, buildTracer())
+			handler := app.NewCheckFailedModel(healthRepo, stateRepo, clock)
 
 			events, err := handler.Handle(t.Context(), app.CheckFailedModelCommand{Zone: bonsaiBigZone})
 			if tt.expectedErr != nil {

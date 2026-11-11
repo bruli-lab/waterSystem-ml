@@ -2,9 +2,6 @@ package app_test
 
 import (
 	"time"
-
-	"go.opentelemetry.io/otel/trace"
-	"go.opentelemetry.io/otel/trace/noop"
 )
 
 const (
@@ -16,10 +13,6 @@ var fixedNow = time.Date(2026, 8, 3, 12, 0, 0, 0, time.UTC)
 
 func clock() time.Time {
 	return fixedNow
-}
-
-func buildTracer() trace.Tracer {
-	return noop.NewTracerProvider().Tracer("test")
 }
 
 const (

@@ -108,7 +108,7 @@ func TestNewPredictionLog(t *testing.T) {
 				require.ErrorIs(t, err, tt.expectedErr)
 				return
 			}
-			require.Equal(t, tt.args.id, got.Id())
+			require.Equal(t, tt.args.id, got.ID())
 			require.Equal(t, now, got.CreatedAt())
 			require.Equal(t, now.Add(15*time.Minute), got.ValidateAfter())
 			require.Equal(t, tt.args.zone, got.Zone())

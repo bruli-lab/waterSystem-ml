@@ -1,3 +1,3 @@
 package app
 
-//go:generate go tool moq -rm -out ports_mock.go . PredictionRepository SoilMeasureRepository ExecutionRepository HumidityReferenceRepository StatusRepository PredictionLogRepository ModelHealthRepository ModelTrainingStateRepository
+//go:generate go tool moq -rm -out ports_mock.go . PredictionRepository SoilMeasureRepository ExecutionRepository HumidityReferenceRepository StatusRepository PredictionLogRepository ModelHealthRepository ModelTrainingStateRepository TrainExecutor ModelTrainingLogRepository

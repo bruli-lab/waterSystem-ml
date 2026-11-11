@@ -18,7 +18,7 @@ import (
 type wateringCommandRecorder struct {
 	executeErr   error
 	publishCalls int
-	savedLogs    []*app.SavePredictionLogCommand
+	savedLogs    []app.SavePredictionLogCommand
 }
 
 func (w *wateringCommandRecorder) Handle(_ context.Context, cmd cqs.Command) ([]event.Event, error) {
@@ -27,7 +27,7 @@ func (w *wateringCommandRecorder) Handle(_ context.Context, cmd cqs.Command) ([]
 		return nil, w.executeErr
 	case app.PublishMessageCommand:
 		w.publishCalls++
-	case *app.SavePredictionLogCommand:
+	case app.SavePredictionLogCommand:
 		w.savedLogs = append(w.savedLogs, c)
 	}
 	return nil, nil

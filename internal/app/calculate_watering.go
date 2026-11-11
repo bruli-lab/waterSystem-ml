@@ -6,8 +6,6 @@ import (
 
 	"github.com/bruli-lab/go-core/cqs"
 	"github.com/bruli-lab/go-core/event"
-	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
 )
@@ -28,20 +26,14 @@ type CalculateWatering struct {
 	predictionLogRepo PredictionLogRepository
 	statusRepo        StatusRepository
 	now               func() time.Time
-	tracer            trace.Tracer
 }
 
 func (c *CalculateWatering) Handle(ctx context.Context, cmd cqs.Command) ([]event.Event, error) {
 	if _, ok := cmd.(CalculateWateringCommand); !ok {
 		return nil, cqs.NewInvalidCommandError(CalculateWateringEventName, cmd.Name())
 	}
-	ctx, span := c.tracer.Start(ctx, "app.CalculateWatering")
-	defer span.End()
-
 	cw, err := c.calculate(ctx)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 	return cw.Events(), nil
@@ -117,7 +109,6 @@ func NewCalculateWatering(
 	predictionLogRepo PredictionLogRepository,
 	statusRepo StatusRepository,
 	now func() time.Time,
-	tracer trace.Tracer,
 ) *CalculateWatering {
 	return &CalculateWatering{
 		predictionRepo:    predictionRepo,
@@ -127,6 +118,5 @@ func NewCalculateWatering(
 		predictionLogRepo: predictionLogRepo,
 		statusRepo:        statusRepo,
 		now:               now,
-		tracer:            tracer,
 	}
 }

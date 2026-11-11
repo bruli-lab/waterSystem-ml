@@ -31,7 +31,7 @@ func (m ModelHealthRepository) GetModelHealth(ctx context.Context, zone string, 
 				Where("watering_executed = TRUE").
 				Where("reached_target IS NOT NULL").
 				OrderExpr("validation_at DESC").
-				Limit(20),
+				Limit(ml.ModelHealthWindow),
 		).
 		TableExpr("latest").
 		ColumnExpr("COUNT(*) FILTER (WHERE reached_target = TRUE) AS successful_predictions").

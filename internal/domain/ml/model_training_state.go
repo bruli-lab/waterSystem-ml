@@ -1,6 +1,11 @@
 package ml
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+var ErrModelTrainingStateNotFound = errors.New("model training state not found")
 
 type ModelTrainingState struct {
 	zone       string

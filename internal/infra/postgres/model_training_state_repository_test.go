@@ -28,7 +28,7 @@ func TestModelTrainingStateRepository(t *testing.T) {
 		then it returns a not found error`, func(t *testing.T) {
 			got, err := repo.GetModelTrainingState(t.Context(), zone)
 			require.Nil(t, got)
-			require.ErrorIs(t, err, ml.ErrModelPredictionStateNotFound)
+			require.ErrorIs(t, err, ml.ErrModelTrainingStateNotFound)
 		})
 		t.Run(`when Save is called,
 		then it returns no error`, func(t *testing.T) {

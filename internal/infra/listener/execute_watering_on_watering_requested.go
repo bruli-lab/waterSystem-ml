@@ -37,11 +37,10 @@ func (e ExecuteWateringOnWateringRequested) savePredictionLog(ctx context.Contex
 	if swr.PredictionID == nil {
 		return
 	}
-	shouldWater := swr.Seconds > 0
-	_, _ = e.ch.Handle(ctx, &app.SavePredictionLogCommand{
+	_, _ = e.ch.Handle(ctx, app.SavePredictionLogCommand{
 		ID:               ptr.FromPointer(swr.PredictionID),
 		Zone:             swr.Zone,
-		ShouldWater:      shouldWater,
+		ShouldWater:      true,
 		PredictedSeconds: swr.Seconds,
 		DecisionReason:   ptr.FromPointer(swr.DecisionReason),
 		MoistureBefore:   swr.MoistureBefore,

@@ -23,7 +23,7 @@ type SavePredictionLogCommand struct {
 	TargetMoisture   float64
 }
 
-func (s *SavePredictionLogCommand) Name() string {
+func (s SavePredictionLogCommand) Name() string {
 	return SavePredictionLogCommandName
 }
 
@@ -33,7 +33,7 @@ type SavePredictionLog struct {
 }
 
 func (s SavePredictionLog) Handle(ctx context.Context, cmd cqs.Command) ([]event.Event, error) {
-	co, ok := cmd.(*SavePredictionLogCommand)
+	co, ok := cmd.(SavePredictionLogCommand)
 	if !ok {
 		return nil, cqs.NewInvalidCommandError(SavePredictionLogCommandName, cmd.Name())
 	}

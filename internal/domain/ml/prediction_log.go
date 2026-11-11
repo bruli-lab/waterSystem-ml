@@ -21,7 +21,6 @@ var (
 	ErrInvalidPredictionLogMoistureBefore = errors.New("invalid prediction log moisture before")
 	ErrInvalidPredictionLogTargetMoisture = errors.New("invalid prediction log target moisture")
 	ErrPredictionLogNotFound              = errors.New("prediction log not found")
-	ErrModelPredictionStateNotFound       = errors.New("model prediction state not found")
 )
 
 type PredictionLogStatus string
@@ -84,7 +83,7 @@ func (l *PredictionLog) ReachedTarget() *bool {
 	}
 }
 
-func (l *PredictionLog) Id() uuid.UUID {
+func (l *PredictionLog) ID() uuid.UUID {
 	return l.id
 }
 
@@ -147,6 +146,7 @@ func (l *PredictionLog) validate() error {
 
 func (l *PredictionLog) Hydrate(
 	id uuid.UUID,
+	createdAt time.Time,
 	zone string,
 	status PredictionLogStatus,
 	shouldWater bool,
@@ -160,6 +160,7 @@ func (l *PredictionLog) Hydrate(
 	validateAfter time.Time,
 ) error {
 	l.id = id
+	l.createdAt = createdAt
 	l.zone = zone
 	l.shouldWater = shouldWater
 	l.predictedSeconds = predictedSeconds
@@ -202,18 +203,17 @@ func NewPredictionLog(
 	now time.Time,
 ) (*PredictionLog, error) {
 	pl := PredictionLog{
-		BasicAggregateRoot: event.NewBasicAggregateRoot(),
-		id:                 id,
-		zone:               zone,
-		shouldWater:        shouldWater,
-		predictedSeconds:   predictedSeconds,
-		decisionReason:     decisionReason,
-		moistureBefore:     moistureBefore,
-		wateringExecuted:   wateringExecuted,
-		targetMoisture:     targetMoisture,
-		createdAt:          now,
-		status:             PredictionLogStatusPending,
-		validateAfter:      now.Add(15 * time.Minute),
+		id:               id,
+		zone:             zone,
+		shouldWater:      shouldWater,
+		predictedSeconds: predictedSeconds,
+		decisionReason:   decisionReason,
+		moistureBefore:   moistureBefore,
+		wateringExecuted: wateringExecuted,
+		targetMoisture:   targetMoisture,
+		createdAt:        now,
+		status:           PredictionLogStatusPending,
+		validateAfter:    now.Add(15 * time.Minute),
 	}
 
 	if err := pl.validate(); err != nil {

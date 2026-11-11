@@ -88,7 +88,7 @@ func TestValidatePrediction_Handle(t *testing.T) {
 					return tt.saveErr
 				},
 			}
-			handler := app.NewValidatePrediction(soilMeasureRepo, predictionLogRepo, clock, buildTracer())
+			handler := app.NewValidatePrediction(soilMeasureRepo, predictionLogRepo, clock)
 
 			events, err := handler.Handle(t.Context(), app.ValidatePredictionCommand{Limit: fixedNow})
 			if tt.expectedErr != nil {

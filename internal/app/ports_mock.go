@@ -717,3 +717,153 @@ func (mock *ModelTrainingStateRepositoryMock) SaveCalls() []struct {
 	mock.lockSave.RUnlock()
 	return calls
 }
+
+// Ensure, that TrainExecutorMock does implement TrainExecutor.
+// If this is not the case, regenerate this file with moq.
+var _ TrainExecutor = &TrainExecutorMock{}
+
+// TrainExecutorMock is a mock implementation of TrainExecutor.
+//
+//	func TestSomethingThatUsesTrainExecutor(t *testing.T) {
+//
+//		// make and configure a mocked TrainExecutor
+//		mockedTrainExecutor := &TrainExecutorMock{
+//			RunFunc: func(ctx context.Context, zone string) error {
+//				panic("mock out the Run method")
+//			},
+//		}
+//
+//		// use mockedTrainExecutor in code that requires TrainExecutor
+//		// and then make assertions.
+//
+//	}
+type TrainExecutorMock struct {
+	// RunFunc mocks the Run method.
+	RunFunc func(ctx context.Context, zone string) error
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// Run holds details about calls to the Run method.
+		Run []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Zone is the zone argument value.
+			Zone string
+		}
+	}
+	lockRun sync.RWMutex
+}
+
+// Run calls RunFunc.
+func (mock *TrainExecutorMock) Run(ctx context.Context, zone string) error {
+	if mock.RunFunc == nil {
+		panic("TrainExecutorMock.RunFunc: method is nil but TrainExecutor.Run was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Zone string
+	}{
+		Ctx:  ctx,
+		Zone: zone,
+	}
+	mock.lockRun.Lock()
+	mock.calls.Run = append(mock.calls.Run, callInfo)
+	mock.lockRun.Unlock()
+	return mock.RunFunc(ctx, zone)
+}
+
+// RunCalls gets all the calls that were made to Run.
+// Check the length with:
+//
+//	len(mockedTrainExecutor.RunCalls())
+func (mock *TrainExecutorMock) RunCalls() []struct {
+	Ctx  context.Context
+	Zone string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Zone string
+	}
+	mock.lockRun.RLock()
+	calls = mock.calls.Run
+	mock.lockRun.RUnlock()
+	return calls
+}
+
+// Ensure, that ModelTrainingLogRepositoryMock does implement ModelTrainingLogRepository.
+// If this is not the case, regenerate this file with moq.
+var _ ModelTrainingLogRepository = &ModelTrainingLogRepositoryMock{}
+
+// ModelTrainingLogRepositoryMock is a mock implementation of ModelTrainingLogRepository.
+//
+//	func TestSomethingThatUsesModelTrainingLogRepository(t *testing.T) {
+//
+//		// make and configure a mocked ModelTrainingLogRepository
+//		mockedModelTrainingLogRepository := &ModelTrainingLogRepositoryMock{
+//			SaveFunc: func(ctx context.Context, zone string, at time.Time) error {
+//				panic("mock out the Save method")
+//			},
+//		}
+//
+//		// use mockedModelTrainingLogRepository in code that requires ModelTrainingLogRepository
+//		// and then make assertions.
+//
+//	}
+type ModelTrainingLogRepositoryMock struct {
+	// SaveFunc mocks the Save method.
+	SaveFunc func(ctx context.Context, zone string, at time.Time) error
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// Save holds details about calls to the Save method.
+		Save []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Zone is the zone argument value.
+			Zone string
+			// At is the at argument value.
+			At time.Time
+		}
+	}
+	lockSave sync.RWMutex
+}
+
+// Save calls SaveFunc.
+func (mock *ModelTrainingLogRepositoryMock) Save(ctx context.Context, zone string, at time.Time) error {
+	if mock.SaveFunc == nil {
+		panic("ModelTrainingLogRepositoryMock.SaveFunc: method is nil but ModelTrainingLogRepository.Save was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Zone string
+		At   time.Time
+	}{
+		Ctx:  ctx,
+		Zone: zone,
+		At:   at,
+	}
+	mock.lockSave.Lock()
+	mock.calls.Save = append(mock.calls.Save, callInfo)
+	mock.lockSave.Unlock()
+	return mock.SaveFunc(ctx, zone, at)
+}
+
+// SaveCalls gets all the calls that were made to Save.
+// Check the length with:
+//
+//	len(mockedModelTrainingLogRepository.SaveCalls())
+func (mock *ModelTrainingLogRepositoryMock) SaveCalls() []struct {
+	Ctx  context.Context
+	Zone string
+	At   time.Time
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Zone string
+		At   time.Time
+	}
+	mock.lockSave.RLock()
+	calls = mock.calls.Save
+	mock.lockSave.RUnlock()
+	return calls
+}

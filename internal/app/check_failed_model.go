@@ -7,8 +7,6 @@ import (
 
 	"github.com/bruli-lab/go-core/cqs"
 	"github.com/bruli-lab/go-core/event"
-	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/bruli-lab/watersystem-ml/internal/domain/ml"
 )
@@ -27,7 +25,6 @@ type CheckFailedModel struct {
 	modelHealthRepo     ModelHealthRepository
 	modelTrainStateRepo ModelTrainingStateRepository
 	now                 func() time.Time
-	tracer              trace.Tracer
 }
 
 func (c CheckFailedModel) Handle(ctx context.Context, cmd cqs.Command) ([]event.Event, error) {
@@ -35,21 +32,12 @@ func (c CheckFailedModel) Handle(ctx context.Context, cmd cqs.Command) ([]event.
 	if !ok {
 		return nil, cqs.NewInvalidCommandError(CheckFailedModelCommandName, cmd.Name())
 	}
-	ctx, span := c.tracer.Start(ctx, "app.CheckFailedModel")
-	defer span.End()
-
-	events, err := c.check(ctx, co.Zone)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return nil, err
-	}
-	return events, nil
+	return c.check(ctx, co.Zone)
 }
 
 func (c CheckFailedModel) check(ctx context.Context, zone string) ([]event.Event, error) {
 	mts, err := c.modelTrainStateRepo.GetModelTrainingState(ctx, zone)
-	if err != nil && !errors.Is(err, ml.ErrModelPredictionStateNotFound) {
+	if err != nil && !errors.Is(err, ml.ErrModelTrainingStateNotFound) {
 		return nil, err
 	}
 	var lastTrainingAt time.Time
@@ -71,12 +59,10 @@ func NewCheckFailedModel(
 	modelHealthRepo ModelHealthRepository,
 	modelTrainStateRepo ModelTrainingStateRepository,
 	now func() time.Time,
-	tracer trace.Tracer,
 ) *CheckFailedModel {
 	return &CheckFailedModel{
 		modelHealthRepo:     modelHealthRepo,
 		modelTrainStateRepo: modelTrainStateRepo,
 		now:                 now,
-		tracer:              tracer,
 	}
 }

@@ -17,6 +17,7 @@ const (
 	PredictionErrorReason             = "prediction_error"
 	ZoneRecentlyExecutedByModelReason = "zone_recently_executed_by_model"
 	IsNightRangeReason                = "is_night_range"
+	PredictionPendingValidationReason = "prediction_pending_validation"
 
 	DefaultSecondsOnLowHumidity = 20
 )
