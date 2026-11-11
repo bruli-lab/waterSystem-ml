@@ -1,0 +1,20 @@
+{
+  "zones": [
+    {
+      "name": "Bonsai big",
+      "moisture_voltage_measurement": "sensor.bonsai_big_bonsai_big_soil_moisture_voltage",
+      "soil_temperature_measurement": "sensor.bonsai_big_bonsai_big_soil_temperature",
+      "calibrations": [
+        {"valid_from": "2026-04-17", "v40": 1.472, "v100": 1.300}
+      ]
+    },
+    {
+      "name": "Bonsai small",
+      "moisture_voltage_measurement": "sensor.bonsai_small_bonsai_small_soil_moisture_voltage",
+      "soil_temperature_measurement": "sensor.bonsai_small_bonsai_small_soil_temperature",
+      "calibrations": [
+        {"valid_from": "2026-06-07", "v40": 1.801, "v100": 1.350}
+      ]
+    }
+  ]
+}

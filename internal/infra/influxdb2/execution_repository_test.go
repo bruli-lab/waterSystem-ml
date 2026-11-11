@@ -12,7 +12,7 @@ import (
 
 func TestExecutionRepository_GetLastExecution(t *testing.T) {
 	token := ""
-	repo := influxdb2.NewExecutionRepository("http://localhost:8086", token, "home", "bonsai-data", noop.NewTracerProvider().Tracer("test"))
+	repo := influxdb2.NewExecutionRepository("http://localhost:8086", token, "home", "bonsai-data", []string{"Bonsai big", "Bonsai small"}, noop.NewTracerProvider().Tracer("test"))
 	got, err := repo.GetLastExecution(t.Context())
 	require.NoError(t, err)
 	require.Len(t, got, 2)

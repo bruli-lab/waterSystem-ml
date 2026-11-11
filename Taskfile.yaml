@@ -42,6 +42,11 @@ tasks:
       - '{{.PY}} python/train.py --zone "Bonsai big"'
       - '{{.PY}} python/train.py --zone "Bonsai small"'
 
+  test-python:
+    desc: Executing Python tests
+    cmds:
+      - '{{.PY}} -m pytest -q python/tests'
+
   predict:
     desc: Executing predict.py en mode JSON
     cmds:

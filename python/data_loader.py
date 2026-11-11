@@ -8,6 +8,7 @@ import pandas as pd
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.warnings import MissingPivotFunction
 from features import normalize_zone
+from zones import load_zones, voltages_to_percentage
 
 warnings.simplefilter("ignore", MissingPivotFunction)
 
@@ -17,12 +18,12 @@ INFLUXDB_ORG = os.getenv("INFLUXDB_ORG", "home")
 INFLUXDB_BUCKET = os.getenv("INFLUXDB_BUCKET", "bonsai-data")
 INFLUXDB_TIMEOUT_MS = int(os.getenv("INFLUXDB_TIMEOUT_MS", "15000"))
 
-SENSOR_MEASUREMENT_TO_ZONE = {
-    "sensor.bonsai_big_bonsai_big_soil_moisture": "Bonsai big",
-    "sensor.bonsai_big_bonsai_big_soil_temperature": "Bonsai big",
-    "sensor.bonsai_small_bonsai_small_soil_moisture": "Bonsai small",
-    "sensor.bonsai_small_bonsai_small_soil_temperature": "Bonsai small",
-}
+MIN_VALID_VOLTAGE = 0.5
+MAX_VALID_VOLTAGE = 3.3
+
+
+def _flux_set(values: list[str]) -> str:
+    return "[" + ", ".join(f'"{v}"' for v in values) + "]"
 
 
 def _get_client() -> InfluxDBClient:
@@ -68,37 +69,6 @@ def _query_to_df(query: str, query_name: str = "influxdb") -> pd.DataFrame:
         return pd.DataFrame()
 
     return df
-
-
-def load_available_zones(start: str = "-180d") -> list[str]:
-    query = f'''
-from(bucket: "{INFLUXDB_BUCKET}")
-  |> range(start: {start})
-  |> filter(fn: (r) => r._measurement == "logs")
-  |> keep(columns: ["zone"])
-  |> group()
-  |> distinct(column: "zone")
-'''
-
-    df = _query_to_df(query, "available_zones")
-
-    if df.empty:
-        return []
-
-    if "_value" in df.columns:
-        values = df["_value"].dropna().tolist()
-    else:
-        return []
-
-    zones = sorted(
-        list({
-            normalize_zone(str(v))
-            for v in values
-            if str(v).strip()
-        })
-    )
-
-    return zones
 
 
 def load_logs_data(zone: Optional[str] = None, start: str = "-90d") -> pd.DataFrame:
@@ -265,15 +235,20 @@ from(bucket: "{INFLUXDB_BUCKET}")
 
 
 def load_soil_moisture_data(zone: Optional[str] = None, start: str = "-90d") -> pd.DataFrame:
+    zones = [z for z in load_zones() if not zone or z.name == normalize_zone(zone)]
+    empty = pd.DataFrame(columns=["_time", "zone", "soil_moisture"])
+    if not zones:
+        return empty
+
     query = f'''
+measurements = {_flux_set([z.moisture_voltage_measurement for z in zones])}
+
 from(bucket: "{INFLUXDB_BUCKET}")
   |> range(start: {start})
   |> filter(fn: (r) => r._field == "value")
   |> filter(fn: (r) => r.domain == "sensor")
-  |> filter(fn: (r) =>
-      r._measurement == "sensor.bonsai_big_bonsai_big_soil_moisture" or
-      r._measurement == "sensor.bonsai_small_bonsai_small_soil_moisture"
-  )
+  |> filter(fn: (r) => contains(set: measurements, value: r._measurement))
+  |> filter(fn: (r) => r._value >= {MIN_VALID_VOLTAGE} and r._value <= {MAX_VALID_VOLTAGE})
   |> keep(columns: ["_time", "_measurement", "_value"])
   |> sort(columns: ["_time"])
 '''
@@ -281,32 +256,44 @@ from(bucket: "{INFLUXDB_BUCKET}")
     df = _query_to_df(query, "soil_moisture")
 
     if df.empty:
-        return pd.DataFrame(columns=["_time", "zone", "soil_moisture"])
+        return empty
 
     df = df[["_time", "_measurement", "_value"]].copy()
     df["_time"] = pd.to_datetime(df["_time"], utc=True)
-    df["zone"] = df["_measurement"].map(SENSOR_MEASUREMENT_TO_ZONE)
-    df["soil_moisture"] = pd.to_numeric(df["_value"], errors="coerce")
-    df = df.drop(columns=["_measurement", "_value"])
-    df = df.dropna(subset=["zone"])
-    df["zone"] = df["zone"].astype(str).apply(normalize_zone)
+    df["voltage"] = pd.to_numeric(df["_value"], errors="coerce")
 
-    if zone:
-        df = df[df["zone"] == normalize_zone(zone)]
+    parts = []
+    for z in zones:
+        zone_df = df[df["_measurement"] == z.moisture_voltage_measurement].copy()
+        if zone_df.empty:
+            continue
+        zone_df["zone"] = z.name
+        zone_df["soil_moisture"] = voltages_to_percentage(zone_df, z).clip(lower=0.0, upper=100.0)
+        parts.append(zone_df.dropna(subset=["soil_moisture"])[["_time", "zone", "soil_moisture"]])
 
-    return df.sort_values(["zone", "_time"]).reset_index(drop=True)
+    if not parts:
+        return empty
+
+    return pd.concat(parts, ignore_index=True).sort_values(["zone", "_time"]).reset_index(drop=True)
 
 
 def load_soil_temperature_data(zone: Optional[str] = None, start: str = "-90d") -> pd.DataFrame:
+    measurement_to_zone = {
+        z.soil_temperature_measurement: z.name
+        for z in load_zones()
+        if z.soil_temperature_measurement and (not zone or z.name == normalize_zone(zone))
+    }
+    if not measurement_to_zone:
+        return pd.DataFrame(columns=["_time", "zone", "soil_temperature"])
+
     query = f'''
+measurements = {_flux_set(sorted(measurement_to_zone))}
+
 from(bucket: "{INFLUXDB_BUCKET}")
   |> range(start: {start})
   |> filter(fn: (r) => r._field == "value")
   |> filter(fn: (r) => r.domain == "sensor")
-  |> filter(fn: (r) =>
-      r._measurement == "sensor.bonsai_big_bonsai_big_soil_temperature" or
-      r._measurement == "sensor.bonsai_small_bonsai_small_soil_temperature"
-  )
+  |> filter(fn: (r) => contains(set: measurements, value: r._measurement))
   |> keep(columns: ["_time", "_measurement", "_value"])
   |> sort(columns: ["_time"])
 '''
@@ -318,7 +305,7 @@ from(bucket: "{INFLUXDB_BUCKET}")
 
     df = df[["_time", "_measurement", "_value"]].copy()
     df["_time"] = pd.to_datetime(df["_time"], utc=True)
-    df["zone"] = df["_measurement"].map(SENSOR_MEASUREMENT_TO_ZONE)
+    df["zone"] = df["_measurement"].map(measurement_to_zone)
     df["soil_temperature"] = pd.to_numeric(df["_value"], errors="coerce")
     df = df.drop(columns=["_measurement", "_value"])
     df = df.dropna(subset=["zone"])

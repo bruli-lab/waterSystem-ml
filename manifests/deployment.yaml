@@ -58,6 +58,10 @@ spec:
             - name: tmp
               mountPath: /tmp
 
+            - name: zones
+              mountPath: /config
+              readOnly: true
+
           env:
             - name: SERVER_HOST
               value: ":8080"
@@ -140,17 +144,8 @@ spec:
                   name: ntfy-secret
                   key: password
 
-            - name: BONSAI_BIG_V100
-              value: "1.300"
-
-            - name: BONSAI_BIG_V40
-              value: "1.472"
-
-            - name: BONSAI_SMALL_V100
-              value: "1.35"
-
-            - name: BONSAI_SMALL_V40
-              value: "1.801"
+            - name: ZONES_FILE
+              value: /config/zones.json
 
             - name: POSTGRES_DATABASE
               value: watersystem_ml
@@ -202,3 +197,7 @@ spec:
 
         - name: tmp
           emptyDir: {}
+
+        - name: zones
+          configMap:
+            name: watersystem-ml-zones
