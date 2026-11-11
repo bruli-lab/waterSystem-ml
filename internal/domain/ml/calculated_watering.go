@@ -21,6 +21,8 @@ const (
 	SoilMeasureUnavailableReason      = "soil_measure_unavailable"
 
 	DefaultSecondsOnLowHumidity = 20
+
+	SafetyWateringInterval = 6 * time.Hour
 )
 
 var ErrUnknownZone = errors.New("unknown zone")
@@ -32,6 +34,7 @@ type CalculatedWatering struct {
 	executions      Executions
 	calculatedZones map[string]bool
 	zonesHumidity   map[string]*ZoneHumidity
+	ambient         AmbientTemperature
 	timeFunc        func() time.Time
 }
 
@@ -151,10 +154,15 @@ func (c *CalculatedWatering) FromPrediction(pred *Prediction, zh *ZoneHumidity) 
 	))
 }
 
-func (c *CalculatedWatering) safetyWatering(zh *ZoneHumidity) error {
-	allowed, err := c.allowedFromZone(zh.Zone(), 0)
-	if err != nil || !allowed {
-		return err
+func (c *CalculatedWatering) safetyWatering(zh *ZoneHumidity) {
+	c.calculatedZones[zh.Zone()] = true
+	if ex, ok := c.executions[zh.Zone()]; ok && c.timeFunc().Sub(ex.ExecutionTime()) < SafetyWateringInterval {
+		c.skipUnmeasured(zh.Zone(), "no recent soil moisture reading, watered less than 6h ago")
+		return
+	}
+	if !c.ambient.IsHot() {
+		c.skipUnmeasured(zh.Zone(), "no recent soil moisture reading, not hot enough for a safety watering")
+		return
 	}
 	reason := "no recent soil moisture reading, safety watering"
 	c.Record(NewWateringRequestedEvent(
@@ -167,8 +175,10 @@ func (c *CalculatedWatering) safetyWatering(zh *ZoneHumidity) error {
 		&reason,
 		nil,
 	))
-	c.calculatedZones[zh.Zone()] = true
-	return nil
+}
+
+func (c *CalculatedWatering) skipUnmeasured(zone, reason string) {
+	c.Record(NewWateringZoneSkippedEvent(zone, SoilMeasureUnavailableReason, 0, nil, &reason, nil))
 }
 
 func NewCalculatedWatering(
@@ -178,6 +188,7 @@ func NewCalculatedWatering(
 	exec Executions,
 	zonesHumidity []*ZoneHumidity,
 	pendingPredictionLogsZones map[string]bool,
+	ambient AmbientTemperature,
 ) (*CalculatedWatering, error) {
 	calcZones := make(map[string]bool, len(zonesHumidity))
 	zoneHumMap := make(map[string]*ZoneHumidity, len(zonesHumidity))
@@ -193,6 +204,7 @@ func NewCalculatedWatering(
 		timeFunc:        timeFunc,
 		calculatedZones: calcZones,
 		zonesHumidity:   zoneHumMap,
+		ambient:         ambient,
 	}
 
 	if !cw.allowedFromSystem() {
@@ -203,9 +215,7 @@ func NewCalculatedWatering(
 		zone := zh.Zone()
 		currentHumidity := zh.CurrentHumidity()
 		if !zh.Measured() {
-			if err := cw.safetyWatering(zh); err != nil {
-				return nil, err
-			}
+			cw.safetyWatering(zh)
 			continue
 		}
 		if _, ok := pendingPredictionLogsZones[zone]; ok {

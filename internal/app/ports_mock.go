@@ -911,3 +911,75 @@ func (mock *ModelTrainingLogRepositoryMock) SaveCalls() []struct {
 	mock.lockSave.RUnlock()
 	return calls
 }
+
+// Ensure, that ForecastRepositoryMock does implement ForecastRepository.
+// If this is not the case, regenerate this file with moq.
+var _ ForecastRepository = &ForecastRepositoryMock{}
+
+// ForecastRepositoryMock is a mock implementation of ForecastRepository.
+//
+//	func TestSomethingThatUsesForecastRepository(t *testing.T) {
+//
+//		// make and configure a mocked ForecastRepository
+//		mockedForecastRepository := &ForecastRepositoryMock{
+//			TemperatureAtFunc: func(ctx context.Context, at time.Time) (*float64, error) {
+//				panic("mock out the TemperatureAt method")
+//			},
+//		}
+//
+//		// use mockedForecastRepository in code that requires ForecastRepository
+//		// and then make assertions.
+//
+//	}
+type ForecastRepositoryMock struct {
+	// TemperatureAtFunc mocks the TemperatureAt method.
+	TemperatureAtFunc func(ctx context.Context, at time.Time) (*float64, error)
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// TemperatureAt holds details about calls to the TemperatureAt method.
+		TemperatureAt []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// At is the at argument value.
+			At time.Time
+		}
+	}
+	lockTemperatureAt sync.RWMutex
+}
+
+// TemperatureAt calls TemperatureAtFunc.
+func (mock *ForecastRepositoryMock) TemperatureAt(ctx context.Context, at time.Time) (*float64, error) {
+	if mock.TemperatureAtFunc == nil {
+		panic("ForecastRepositoryMock.TemperatureAtFunc: method is nil but ForecastRepository.TemperatureAt was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		At  time.Time
+	}{
+		Ctx: ctx,
+		At:  at,
+	}
+	mock.lockTemperatureAt.Lock()
+	mock.calls.TemperatureAt = append(mock.calls.TemperatureAt, callInfo)
+	mock.lockTemperatureAt.Unlock()
+	return mock.TemperatureAtFunc(ctx, at)
+}
+
+// TemperatureAtCalls gets all the calls that were made to TemperatureAt.
+// Check the length with:
+//
+//	len(mockedForecastRepository.TemperatureAtCalls())
+func (mock *ForecastRepositoryMock) TemperatureAtCalls() []struct {
+	Ctx context.Context
+	At  time.Time
+} {
+	var calls []struct {
+		Ctx context.Context
+		At  time.Time
+	}
+	mock.lockTemperatureAt.RLock()
+	calls = mock.calls.TemperatureAt
+	mock.lockTemperatureAt.RUnlock()
+	return calls
+}

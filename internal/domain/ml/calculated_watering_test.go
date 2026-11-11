@@ -33,6 +33,10 @@ func oldExecution(zone string) ml.Execution {
 	return ptr.FromPointer(ml.NewExecution(zone, dayTimeFunc().Add(-5*time.Hour)))
 }
 
+func staleExecution(zone string) ml.Execution {
+	return ptr.FromPointer(ml.NewExecution(zone, dayTimeFunc().Add(-8*time.Hour)))
+}
+
 func recentExecution(zone string) ml.Execution {
 	return ptr.FromPointer(ml.NewExecution(zone, dayTimeFunc().Add(-1*time.Hour)))
 }
@@ -84,6 +88,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 		exec                       ml.Executions
 		zonesHumidity              []*ml.ZoneHumidity
 		pendingPredictionLogsZones map[string]bool
+		ambient                    ml.AmbientTemperature
 		expectedCalculated         bool
 		expectedPendingZones       []string
 		expectedEvents             []event.Event
@@ -238,14 +243,18 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "zone without recent soil measure requests a safety watering",
+			name:            "zone without recent soil measure requests a safety watering when it is hot",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
-			exec:            executionsForAllZones(),
+			exec: ml.Executions{
+				bonsaiBigZone:   staleExecution(bonsaiBigZone),
+				bonsaiSmallZone: oldExecution(bonsaiSmallZone),
+			},
 			zonesHumidity: []*ml.ZoneHumidity{
 				ml.NewUnmeasuredZoneHumidity(bonsaiBigZone, humidityRef()),
 				zoneHumidity(bonsaiSmallZone, highHumidity),
 			},
+			ambient:            ml.NewAmbientTemperature(new(30.0), nil),
 			expectedCalculated: true,
 			expectedEvents: []event.Event{
 				&ml.WateringRequestedEvent{},
@@ -257,10 +266,59 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
+			name:            "zone without recent soil measure and no execution history requests a safety watering",
+			systemActivated: true,
+			timeFunc:        dayTimeFunc,
+			exec:            ml.Executions{},
+			zonesHumidity: []*ml.ZoneHumidity{
+				ml.NewUnmeasuredZoneHumidity(bonsaiBigZone, humidityRef()),
+			},
+			expectedCalculated: true,
+			expectedEvents: []event.Event{
+				&ml.WateringRequestedEvent{},
+			},
+			expectedReasons: []string{
+				ml.SoilMeasureUnavailableReason,
+			},
+		},
+		{
+			name:            "zone without recent soil measure is skipped when it is not hot",
+			systemActivated: true,
+			timeFunc:        dayTimeFunc,
+			exec:            ml.Executions{bonsaiBigZone: staleExecution(bonsaiBigZone)},
+			zonesHumidity: []*ml.ZoneHumidity{
+				ml.NewUnmeasuredZoneHumidity(bonsaiBigZone, humidityRef()),
+			},
+			ambient:            ml.NewAmbientTemperature(new(20.0), new(30.0)),
+			expectedCalculated: true,
+			expectedEvents: []event.Event{
+				&ml.WateringZoneSkippedEvent{},
+			},
+			expectedReasons: []string{
+				ml.SoilMeasureUnavailableReason,
+			},
+		},
+		{
+			name:            "zone without recent soil measure is skipped when it was watered less than 6h ago",
+			systemActivated: true,
+			timeFunc:        dayTimeFunc,
+			exec:            ml.Executions{bonsaiBigZone: oldExecution(bonsaiBigZone)},
+			zonesHumidity: []*ml.ZoneHumidity{
+				ml.NewUnmeasuredZoneHumidity(bonsaiBigZone, humidityRef()),
+			},
+			expectedCalculated: true,
+			expectedEvents: []event.Event{
+				&ml.WateringZoneSkippedEvent{},
+			},
+			expectedReasons: []string{
+				ml.SoilMeasureUnavailableReason,
+			},
+		},
+		{
 			name:            "zone without recent soil measure ignores pending validation",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
-			exec:            executionsForAllZones(),
+			exec:            ml.Executions{bonsaiBigZone: staleExecution(bonsaiBigZone)},
 			zonesHumidity: []*ml.ZoneHumidity{
 				ml.NewUnmeasuredZoneHumidity(bonsaiBigZone, humidityRef()),
 			},
@@ -271,25 +329,6 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 			expectedReasons: []string{
 				ml.SoilMeasureUnavailableReason,
-			},
-		},
-		{
-			name:            "zone without recent soil measure respects the watering cooldown",
-			systemActivated: true,
-			timeFunc:        dayTimeFunc,
-			exec: ml.Executions{
-				bonsaiBigZone:   recentExecution(bonsaiBigZone),
-				bonsaiSmallZone: oldExecution(bonsaiSmallZone),
-			},
-			zonesHumidity: []*ml.ZoneHumidity{
-				ml.NewUnmeasuredZoneHumidity(bonsaiBigZone, humidityRef()),
-			},
-			expectedCalculated: true,
-			expectedEvents: []event.Event{
-				&ml.WateringZoneSkippedEvent{},
-			},
-			expectedReasons: []string{
-				ml.ZoneRecentlyExecutedByModelReason,
 			},
 		},
 		{
@@ -333,6 +372,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 				tt.exec,
 				tt.zonesHumidity,
 				tt.pendingPredictionLogsZones,
+				tt.ambient,
 			)
 
 			if tt.expectedErr != nil {
@@ -421,6 +461,7 @@ func TestCalculatedWatering_FromPrediction(t *testing.T) {
 					zoneHumidity(bonsaiSmallZone, mediumHumidity),
 				},
 				map[string]bool{},
+				ml.NewAmbientTemperature(nil, nil),
 			)
 			require.NoError(t, err)
 			require.False(t, cw.Calculated())

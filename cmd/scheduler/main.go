@@ -104,6 +104,7 @@ func run() error {
 		log.ErrorContext(ctx, "Error creating water system executor", "err", err)
 		return err
 	}
+	forecastRepo := influxdb2.NewForecastRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
 	executionRepo := influxdb2.NewExecutionRepository(conf.InfluxDBURL, conf.InfluxDBToken, conf.InfluxDBOrg, conf.InfluxDBBucket, tracer)
 	humidityRepo := memory.NewHumidityReferenceRepository(conf.BonsaiBigV100, conf.BonsaiBigV40, conf.BonsaiSmallV100, conf.BonsaiSmallV40)
 	waterSkippedLogRepo := influxdb2.NewWateringSkippedLogRepository(
@@ -118,7 +119,7 @@ func run() error {
 
 	loc := buildTimeLocation(ctx, log)
 	calculateWateringHnd := app.NewCalculateWatering(
-		predictionRepo, soilMeasureRepo, humidityRepo, executionRepo, predictionLogRepo, waterSystemExecutor,
+		predictionRepo, soilMeasureRepo, humidityRepo, executionRepo, predictionLogRepo, waterSystemExecutor, forecastRepo,
 		func() time.Time {
 			return time.Now().In(loc)
 		},
@@ -135,12 +136,15 @@ func run() error {
 	saveWaterSkippedLogWZList := listener.NewSaveWateringSkippedLogOnWateringZoneSkipped(commandBus)
 	saveWaterSkippedLogWSList := listener.NewSaveWateringSkippedLogOnWateringSystemSkipped(commandBus)
 	publishMsgPredErrList := listener.NewPublishMessageOnPredictionError(commandBus)
+	publishMsgSensorList := listener.NewPublishMessageOnSoilMeasureUnavailable(commandBus)
 	checkModelPredValFailedList := listener.NewCheckModelOnPredictionValidationFailed(commandBus)
 	trainModelZoneModelDegradedList := listener.NewTrainModelOnZoneModelDegraded(trainCh)
 
 	eventBus := event.NewBus()
-	eventBus.Subscribe(ml.WateringRequestedEventName, publishMsgList, execWatOnWaterSysList, publishMsgPredErrList)
-	eventBus.Subscribe(ml.WateringZoneSkippedEventName, saveWaterSkippedLogWZList, publishMsgPredErrList)
+	eventBus.Subscribe(
+		ml.WateringRequestedEventName, publishMsgList, execWatOnWaterSysList, publishMsgPredErrList, publishMsgSensorList,
+	)
+	eventBus.Subscribe(ml.WateringZoneSkippedEventName, saveWaterSkippedLogWZList, publishMsgPredErrList, publishMsgSensorList)
 	eventBus.Subscribe(ml.WateringSystemSkippedEventName, saveWaterSkippedLogWSList)
 	eventBus.Subscribe(ml.PredictionValidationFailedEventName, checkModelPredValFailedList)
 	eventBus.Subscribe(ml.ZoneModelDegradedEventName, trainModelZoneModelDegradedList)

@@ -16,10 +16,14 @@ import (
 func TestCalculateWatering_Handle(t *testing.T) {
 	errTest := errors.New("error")
 
-	defaultStatus := ml.NewStatus(true, false)
+	defaultStatus := ml.NewStatus(true, false, 20)
 	defaultExecutions := ml.Executions{
 		bonsaiBigZone:   ptr.FromPointer(ml.NewExecution(bonsaiBigZone, dayTimeFunc().Add(-5*time.Hour))),
 		bonsaiSmallZone: ptr.FromPointer(ml.NewExecution(bonsaiSmallZone, dayTimeFunc().Add(-5*time.Hour))),
+	}
+	staleExecutions := ml.Executions{
+		bonsaiBigZone:   ptr.FromPointer(ml.NewExecution(bonsaiBigZone, dayTimeFunc().Add(-8*time.Hour))),
+		bonsaiSmallZone: ptr.FromPointer(ml.NewExecution(bonsaiSmallZone, dayTimeFunc().Add(-8*time.Hour))),
 	}
 	defaultMeasures := []ml.SoilMeasure{
 		ptr.FromPointer(ml.NewSoilMeasure(bonsaiBigZone, mediumHumidity)),
@@ -47,6 +51,7 @@ func TestCalculateWatering_Handle(t *testing.T) {
 		prediction            []ml.Prediction
 		wantEvents            int
 		wantReasons           []string
+		forecastErr           error
 		wantPredict           bool
 	}{
 		{
@@ -160,7 +165,7 @@ func TestCalculateWatering_Handle(t *testing.T) {
 		{
 			name:       "and one zone has no recent soil measure, then it asks a safety watering for that zone",
 			status:     defaultStatus,
-			executions: defaultExecutions,
+			executions: staleExecutions,
 			measures: []ml.SoilMeasure{
 				ptr.FromPointer(ml.NewSoilMeasure(bonsaiBigZone, lowHumidity)),
 			},
@@ -171,14 +176,22 @@ func TestCalculateWatering_Handle(t *testing.T) {
 		{
 			name:        "and no zone has a recent soil measure, then every zone gets a safety watering",
 			status:      defaultStatus,
-			executions:  defaultExecutions,
+			executions:  staleExecutions,
 			humRef:      defaultHumidityRef,
 			wantEvents:  2,
 			wantReasons: []string{ml.SoilMeasureUnavailableReason, ml.SoilMeasureUnavailableReason},
 		},
 		{
+			name:        "and forecast fails and the sensor is cool, then zones without measure are skipped",
+			status:      ml.NewStatus(true, false, 20),
+			executions:  staleExecutions,
+			humRef:      defaultHumidityRef,
+			forecastErr: errTest,
+			wantEvents:  2,
+		},
+		{
 			name:       "and system is blocked by raining, then it returns without asking predictions",
-			status:     ml.NewStatus(true, true),
+			status:     ml.NewStatus(true, true, 20),
 			executions: defaultExecutions,
 			measures:   defaultMeasures,
 			humRef:     defaultHumidityRef,
@@ -233,6 +246,14 @@ func TestCalculateWatering_Handle(t *testing.T) {
 				execRepo,
 				predictionLogRepo,
 				statusRepo,
+				&app.ForecastRepositoryMock{
+					TemperatureAtFunc: func(_ context.Context, _ time.Time) (*float64, error) {
+						if tt.forecastErr != nil {
+							return nil, tt.forecastErr
+						}
+						return new(30.0), nil
+					},
+				},
 				dayTimeFunc,
 			)
 			events, err := handler.Handle(t.Context(), app.CalculateWateringCommand{})

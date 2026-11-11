@@ -25,6 +25,7 @@ type CalculateWatering struct {
 	executionRepo     ExecutionRepository
 	predictionLogRepo PredictionLogRepository
 	statusRepo        StatusRepository
+	forecastRepo      ForecastRepository
 	now               func() time.Time
 }
 
@@ -61,7 +62,9 @@ func (c *CalculateWatering) calculate(ctx context.Context) (*ml.CalculatedWateri
 		return nil, err
 	}
 
-	cw, err := ml.NewCalculatedWatering(st.Raining(), st.Active(), c.now, exec, zoneHum, pendingPredictionLogs)
+	cw, err := ml.NewCalculatedWatering(
+		st.Raining(), st.Active(), c.now, exec, zoneHum, pendingPredictionLogs, c.ambientTemperature(ctx, st),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -81,6 +84,15 @@ func (c *CalculateWatering) calculate(ctx context.Context) (*ml.CalculatedWateri
 		cw.FromPrediction(&predictions[i], zh)
 	}
 	return cw, nil
+}
+
+func (c *CalculateWatering) ambientTemperature(ctx context.Context, st *ml.Status) ml.AmbientTemperature {
+	sensor := st.Temperature()
+	forecast, err := c.forecastRepo.TemperatureAt(ctx, c.now())
+	if err != nil {
+		forecast = nil
+	}
+	return ml.NewAmbientTemperature(forecast, &sensor)
 }
 
 func (c *CalculateWatering) zonesHumidity(
@@ -120,6 +132,7 @@ func NewCalculateWatering(
 	executionRepo ExecutionRepository,
 	predictionLogRepo PredictionLogRepository,
 	statusRepo StatusRepository,
+	forecastRepo ForecastRepository,
 	now func() time.Time,
 ) *CalculateWatering {
 	return &CalculateWatering{
@@ -129,6 +142,7 @@ func NewCalculateWatering(
 		executionRepo:     executionRepo,
 		predictionLogRepo: predictionLogRepo,
 		statusRepo:        statusRepo,
+		forecastRepo:      forecastRepo,
 		now:               now,
 	}
 }
