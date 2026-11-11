@@ -87,16 +87,28 @@ func (c *CalculateWatering) zonesHumidity(
 	ctx context.Context,
 	measures []ml.SoilMeasure,
 ) ([]*ml.ZoneHumidity, map[string]*ml.ZoneHumidity, error) {
-	zoneHumMap := make(map[string]*ml.ZoneHumidity, len(measures))
-	zoneHum := make([]*ml.ZoneHumidity, 0, len(measures))
+	zones, err := c.humidityRefRepo.Zones(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	measureByZone := make(map[string]ml.SoilMeasure, len(measures))
 	for _, measure := range measures {
-		ref, err := c.humidityRefRepo.GetByZone(ctx, measure.Zone())
+		measureByZone[measure.Zone()] = measure
+	}
+
+	zoneHumMap := make(map[string]*ml.ZoneHumidity, len(zones))
+	zoneHum := make([]*ml.ZoneHumidity, 0, len(zones))
+	for _, zone := range zones {
+		ref, err := c.humidityRefRepo.GetByZone(ctx, zone)
 		if err != nil {
 			return nil, nil, err
 		}
-		hum := ml.NewZoneHumidity(measure.Zone(), measure.Humidity(), ref)
+		hum := ml.NewUnmeasuredZoneHumidity(zone, ref)
+		if measure, ok := measureByZone[zone]; ok {
+			hum = ml.NewZoneHumidity(zone, measure.Humidity(), ref)
+		}
 		zoneHum = append(zoneHum, hum)
-		zoneHumMap[measure.Zone()] = hum
+		zoneHumMap[zone] = hum
 	}
 	return zoneHum, zoneHumMap, nil
 }

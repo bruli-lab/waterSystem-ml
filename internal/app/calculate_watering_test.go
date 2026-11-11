@@ -46,6 +46,7 @@ func TestCalculateWatering_Handle(t *testing.T) {
 		pendingValidationZone map[string]bool
 		prediction            []ml.Prediction
 		wantEvents            int
+		wantReasons           []string
 		wantPredict           bool
 	}{
 		{
@@ -157,6 +158,25 @@ func TestCalculateWatering_Handle(t *testing.T) {
 			wantEvents: 2,
 		},
 		{
+			name:       "and one zone has no recent soil measure, then it asks a safety watering for that zone",
+			status:     defaultStatus,
+			executions: defaultExecutions,
+			measures: []ml.SoilMeasure{
+				ptr.FromPointer(ml.NewSoilMeasure(bonsaiBigZone, lowHumidity)),
+			},
+			humRef:      defaultHumidityRef,
+			wantEvents:  2,
+			wantReasons: []string{ml.BelowMinThresholdReason, ml.SoilMeasureUnavailableReason},
+		},
+		{
+			name:        "and no zone has a recent soil measure, then every zone gets a safety watering",
+			status:      defaultStatus,
+			executions:  defaultExecutions,
+			humRef:      defaultHumidityRef,
+			wantEvents:  2,
+			wantReasons: []string{ml.SoilMeasureUnavailableReason, ml.SoilMeasureUnavailableReason},
+		},
+		{
 			name:       "and system is blocked by raining, then it returns without asking predictions",
 			status:     ml.NewStatus(true, true),
 			executions: defaultExecutions,
@@ -185,6 +205,9 @@ func TestCalculateWatering_Handle(t *testing.T) {
 			humRefRepo := &app.HumidityReferenceRepositoryMock{
 				GetByZoneFunc: func(_ context.Context, _ string) (*ml.HumidityReference, error) {
 					return tt.humRef, tt.humidityRefErr
+				},
+				ZonesFunc: func(_ context.Context) ([]string, error) {
+					return []string{bonsaiBigZone, bonsaiSmallZone}, nil
 				},
 			}
 			predictionLogRepo := &app.PredictionLogRepositoryMock{
@@ -222,6 +245,11 @@ func TestCalculateWatering_Handle(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.wantPredict, predictionCalled)
 			require.Len(t, events, tt.wantEvents)
+			for i, reason := range tt.wantReasons {
+				ev, ok := events[i].(*ml.WateringRequestedEvent)
+				require.True(t, ok, "event %d: %T", i, events[i])
+				require.Equal(t, reason, ev.Reason)
+			}
 		})
 	}
 }

@@ -18,6 +18,7 @@ const (
 	ZoneRecentlyExecutedByModelReason = "zone_recently_executed_by_model"
 	IsNightRangeReason                = "is_night_range"
 	PredictionPendingValidationReason = "prediction_pending_validation"
+	SoilMeasureUnavailableReason      = "soil_measure_unavailable"
 
 	DefaultSecondsOnLowHumidity = 20
 )
@@ -150,6 +151,26 @@ func (c *CalculatedWatering) FromPrediction(pred *Prediction, zh *ZoneHumidity) 
 	))
 }
 
+func (c *CalculatedWatering) safetyWatering(zh *ZoneHumidity) error {
+	allowed, err := c.allowedFromZone(zh.Zone(), 0)
+	if err != nil || !allowed {
+		return err
+	}
+	reason := "no recent soil moisture reading, safety watering"
+	c.Record(NewWateringRequestedEvent(
+		zh.Zone(),
+		SoilMeasureUnavailableReason,
+		DefaultSecondsOnLowHumidity,
+		0,
+		zh.HumidityReference().TargetMoistureVoltage(),
+		nil,
+		&reason,
+		nil,
+	))
+	c.calculatedZones[zh.Zone()] = true
+	return nil
+}
+
 func NewCalculatedWatering(
 	isRaining bool,
 	systemActivated bool,
@@ -181,6 +202,12 @@ func NewCalculatedWatering(
 	for _, zh := range zonesHumidity {
 		zone := zh.Zone()
 		currentHumidity := zh.CurrentHumidity()
+		if !zh.Measured() {
+			if err := cw.safetyWatering(zh); err != nil {
+				return nil, err
+			}
+			continue
+		}
 		if _, ok := pendingPredictionLogsZones[zone]; ok {
 			cw.Record(NewWateringZoneSkippedEvent(
 				zh.Zone(),

@@ -238,6 +238,77 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
+			name:            "zone without recent soil measure requests a safety watering",
+			systemActivated: true,
+			timeFunc:        dayTimeFunc,
+			exec:            executionsForAllZones(),
+			zonesHumidity: []*ml.ZoneHumidity{
+				ml.NewUnmeasuredZoneHumidity(bonsaiBigZone, humidityRef()),
+				zoneHumidity(bonsaiSmallZone, highHumidity),
+			},
+			expectedCalculated: true,
+			expectedEvents: []event.Event{
+				&ml.WateringRequestedEvent{},
+				&ml.WateringZoneSkippedEvent{},
+			},
+			expectedReasons: []string{
+				ml.SoilMeasureUnavailableReason,
+				ml.AboveMaxThresholdReason,
+			},
+		},
+		{
+			name:            "zone without recent soil measure ignores pending validation",
+			systemActivated: true,
+			timeFunc:        dayTimeFunc,
+			exec:            executionsForAllZones(),
+			zonesHumidity: []*ml.ZoneHumidity{
+				ml.NewUnmeasuredZoneHumidity(bonsaiBigZone, humidityRef()),
+			},
+			pendingPredictionLogsZones: map[string]bool{bonsaiBigZone: true},
+			expectedCalculated:         true,
+			expectedEvents: []event.Event{
+				&ml.WateringRequestedEvent{},
+			},
+			expectedReasons: []string{
+				ml.SoilMeasureUnavailableReason,
+			},
+		},
+		{
+			name:            "zone without recent soil measure respects the watering cooldown",
+			systemActivated: true,
+			timeFunc:        dayTimeFunc,
+			exec: ml.Executions{
+				bonsaiBigZone:   recentExecution(bonsaiBigZone),
+				bonsaiSmallZone: oldExecution(bonsaiSmallZone),
+			},
+			zonesHumidity: []*ml.ZoneHumidity{
+				ml.NewUnmeasuredZoneHumidity(bonsaiBigZone, humidityRef()),
+			},
+			expectedCalculated: true,
+			expectedEvents: []event.Event{
+				&ml.WateringZoneSkippedEvent{},
+			},
+			expectedReasons: []string{
+				ml.ZoneRecentlyExecutedByModelReason,
+			},
+		},
+		{
+			name:            "night skips a zone without recent soil measure",
+			systemActivated: true,
+			timeFunc:        nightTimeFunc,
+			exec:            executionsForAllZones(),
+			zonesHumidity: []*ml.ZoneHumidity{
+				ml.NewUnmeasuredZoneHumidity(bonsaiBigZone, humidityRef()),
+			},
+			expectedCalculated: true,
+			expectedEvents: []event.Event{
+				&ml.WateringSystemSkippedEvent{},
+			},
+			expectedReasons: []string{
+				ml.IsNightRangeReason,
+			},
+		},
+		{
 			name:            "unknown execution zone returns error",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
