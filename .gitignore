@@ -5,3 +5,4 @@ python/models/*
 tmp/
 coverage.out
 /manifests/secret-ghcr.yaml
+TODO.md

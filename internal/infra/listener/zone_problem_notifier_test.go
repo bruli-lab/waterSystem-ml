@@ -109,3 +109,56 @@ func TestPublishMessageOnPredictionError(t *testing.T) {
 		})
 	}
 }
+
+func TestPublishMessageOnSoilMeasureUnavailable(t *testing.T) {
+	t.Parallel()
+
+	unavailableRequested := func() event.Event {
+		return ml.NewWateringRequestedEvent(zone, ml.SoilMeasureUnavailableReason, 20, 0, 1.3, nil, new("no reading"), nil)
+	}
+	unavailableSkipped := func() event.Event {
+		return ml.NewWateringZoneSkippedEvent(zone, ml.SoilMeasureUnavailableReason, 0, nil, new("no reading"), nil)
+	}
+	tests := []struct {
+		name          string
+		events        []event.Event
+		expectedTexts []string
+	}{
+		{
+			name:          "a safety watering and later skips notify only once",
+			events:        []event.Event{unavailableRequested(), unavailableSkipped(), unavailableSkipped()},
+			expectedTexts: []string{"Soil sensor ERROR"},
+		},
+		{
+			name: "a measured decision after the failure notifies the recovery",
+			events: []event.Event{
+				unavailableSkipped(),
+				ml.NewWateringZoneSkippedEvent(zone, ml.AboveMaxThresholdReason, 1.45, nil, nil, nil),
+			},
+			expectedTexts: []string{"Soil sensor ERROR", "Soil sensor RECOVERED"},
+		},
+		{
+			name: "a recently executed skip is not a recovery",
+			events: []event.Event{
+				unavailableSkipped(),
+				ml.NewWateringZoneSkippedEvent(zone, ml.ZoneRecentlyExecutedByModelReason, 0, nil, nil, nil),
+				unavailableSkipped(),
+			},
+			expectedTexts: []string{"Soil sensor ERROR"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			rec := &commandRecorder{}
+			l := listener.NewPublishMessageOnSoilMeasureUnavailable(rec)
+			for _, ev := range tt.events {
+				require.NoError(t, l.Listen(t.Context(), ev))
+			}
+			require.Len(t, rec.messages, len(tt.expectedTexts))
+			for i, text := range tt.expectedTexts {
+				require.Contains(t, rec.messages[i], text, "message %d", i)
+			}
+		})
+	}
+}

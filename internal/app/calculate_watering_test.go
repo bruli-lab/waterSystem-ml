@@ -16,10 +16,14 @@ import (
 func TestCalculateWatering_Handle(t *testing.T) {
 	errTest := errors.New("error")
 
-	defaultStatus := ml.NewStatus(true, false)
+	defaultStatus := ml.NewStatus(true, false, 20)
 	defaultExecutions := ml.Executions{
 		bonsaiBigZone:   ptr.FromPointer(ml.NewExecution(bonsaiBigZone, dayTimeFunc().Add(-5*time.Hour))),
 		bonsaiSmallZone: ptr.FromPointer(ml.NewExecution(bonsaiSmallZone, dayTimeFunc().Add(-5*time.Hour))),
+	}
+	staleExecutions := ml.Executions{
+		bonsaiBigZone:   ptr.FromPointer(ml.NewExecution(bonsaiBigZone, dayTimeFunc().Add(-8*time.Hour))),
+		bonsaiSmallZone: ptr.FromPointer(ml.NewExecution(bonsaiSmallZone, dayTimeFunc().Add(-8*time.Hour))),
 	}
 	defaultMeasures := []ml.SoilMeasure{
 		ptr.FromPointer(ml.NewSoilMeasure(bonsaiBigZone, mediumHumidity)),
@@ -46,6 +50,8 @@ func TestCalculateWatering_Handle(t *testing.T) {
 		pendingValidationZone map[string]bool
 		prediction            []ml.Prediction
 		wantEvents            int
+		wantReasons           []string
+		forecastErr           error
 		wantPredict           bool
 	}{
 		{
@@ -83,9 +89,8 @@ func TestCalculateWatering_Handle(t *testing.T) {
 			humidityRefErr: errTest,
 		},
 		{
-			name:        "and calculated watering returns error, then it returns same error",
-			expectedErr: ml.ErrUnknownZone,
-			status:      defaultStatus,
+			name:   "and a zone has no execution history, then it is evaluated as not recently watered",
+			status: defaultStatus,
 			executions: ml.Executions{
 				"wrong": ptr.FromPointer(ml.NewExecution("wrong", dayTimeFunc().Add(-5*time.Hour))),
 			},
@@ -93,7 +98,9 @@ func TestCalculateWatering_Handle(t *testing.T) {
 				ptr.FromPointer(ml.NewSoilMeasure(bonsaiBigZone, lowHumidity)),
 				ptr.FromPointer(ml.NewSoilMeasure(bonsaiSmallZone, lowHumidity)),
 			},
-			humRef: defaultHumidityRef,
+			humRef:      defaultHumidityRef,
+			wantEvents:  2,
+			wantReasons: []string{ml.BelowMinThresholdReason, ml.BelowMinThresholdReason},
 		},
 		{
 			name:        "and prediction repository returns error for medium humidity zones, then it returns same error",
@@ -157,8 +164,35 @@ func TestCalculateWatering_Handle(t *testing.T) {
 			wantEvents: 2,
 		},
 		{
+			name:       "and one zone has no recent soil measure, then it asks a safety watering for that zone",
+			status:     defaultStatus,
+			executions: staleExecutions,
+			measures: []ml.SoilMeasure{
+				ptr.FromPointer(ml.NewSoilMeasure(bonsaiBigZone, lowHumidity)),
+			},
+			humRef:      defaultHumidityRef,
+			wantEvents:  2,
+			wantReasons: []string{ml.BelowMinThresholdReason, ml.SoilMeasureUnavailableReason},
+		},
+		{
+			name:        "and no zone has a recent soil measure, then every zone gets a safety watering",
+			status:      defaultStatus,
+			executions:  staleExecutions,
+			humRef:      defaultHumidityRef,
+			wantEvents:  2,
+			wantReasons: []string{ml.SoilMeasureUnavailableReason, ml.SoilMeasureUnavailableReason},
+		},
+		{
+			name:        "and forecast fails and the sensor is cool, then zones without measure are skipped",
+			status:      ml.NewStatus(true, false, 20),
+			executions:  staleExecutions,
+			humRef:      defaultHumidityRef,
+			forecastErr: errTest,
+			wantEvents:  2,
+		},
+		{
 			name:       "and system is blocked by raining, then it returns without asking predictions",
-			status:     ml.NewStatus(true, true),
+			status:     ml.NewStatus(true, true, 20),
 			executions: defaultExecutions,
 			measures:   defaultMeasures,
 			humRef:     defaultHumidityRef,
@@ -186,6 +220,9 @@ func TestCalculateWatering_Handle(t *testing.T) {
 				GetByZoneFunc: func(_ context.Context, _ string) (*ml.HumidityReference, error) {
 					return tt.humRef, tt.humidityRefErr
 				},
+				ZonesFunc: func(_ context.Context) ([]string, error) {
+					return []string{bonsaiBigZone, bonsaiSmallZone}, nil
+				},
 			}
 			predictionLogRepo := &app.PredictionLogRepositoryMock{
 				GetPendingValidationZonesFunc: func(_ context.Context) (map[string]bool, error) {
@@ -210,6 +247,14 @@ func TestCalculateWatering_Handle(t *testing.T) {
 				execRepo,
 				predictionLogRepo,
 				statusRepo,
+				&app.ForecastRepositoryMock{
+					TemperatureAtFunc: func(_ context.Context, _ time.Time) (*float64, error) {
+						if tt.forecastErr != nil {
+							return nil, tt.forecastErr
+						}
+						return new(30.0), nil
+					},
+				},
 				dayTimeFunc,
 			)
 			events, err := handler.Handle(t.Context(), app.CalculateWateringCommand{})
@@ -222,6 +267,11 @@ func TestCalculateWatering_Handle(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.wantPredict, predictionCalled)
 			require.Len(t, events, tt.wantEvents)
+			for i, reason := range tt.wantReasons {
+				ev, ok := events[i].(*ml.WateringRequestedEvent)
+				require.True(t, ok, "event %d: %T", i, events[i])
+				require.Equal(t, reason, ev.Reason)
+			}
 		})
 	}
 }

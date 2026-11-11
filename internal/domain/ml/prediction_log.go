@@ -12,6 +12,9 @@ const (
 	PredictionLogStatusSuccess PredictionLogStatus = "success"
 	PredictionLogStatusFailed  PredictionLogStatus = "failed"
 	PredictionLogStatusPending PredictionLogStatus = "pending"
+	PredictionLogStatusExpired PredictionLogStatus = "expired"
+
+	MaxPendingValidationAge = 2 * time.Hour
 )
 
 var (
@@ -37,6 +40,8 @@ func ParsePredictionLogStatus(s string) (PredictionLogStatus, error) {
 		return PredictionLogStatusFailed, nil
 	case PredictionLogStatusPending.String():
 		return PredictionLogStatusPending, nil
+	case PredictionLogStatusExpired.String():
+		return PredictionLogStatusExpired, nil
 	default:
 		return "", errors.New("invalid prediction log status")
 	}
@@ -173,6 +178,12 @@ func (l *PredictionLog) Hydrate(
 	l.status = status
 	l.validateAfter = validateAfter
 	return l.validate()
+}
+
+func (l *PredictionLog) Expire(at time.Time) {
+	l.validationAt = &at
+	l.moistureAfter = nil
+	l.status = PredictionLogStatusExpired
 }
 
 func (l *PredictionLog) AddValidation(at *time.Time, moistureAfter *float64) {

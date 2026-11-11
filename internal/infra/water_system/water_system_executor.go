@@ -26,8 +26,9 @@ type ExecuteBody struct {
 }
 
 type Status struct {
-	Active    bool `json:"active"`
-	IsRaining bool `json:"is_raining"`
+	Active      bool    `json:"active"`
+	IsRaining   bool    `json:"is_raining"`
+	Temperature float64 `json:"temperature"`
 }
 
 type Executor struct {
@@ -82,7 +83,7 @@ func (e *Executor) GetStatus(ctx context.Context) (*ml.Status, error) {
 	}
 
 	span.SetStatus(codes.Ok, "OK")
-	return ml.NewStatus(status.Active, status.IsRaining), nil
+	return ml.NewStatus(status.Active, status.IsRaining, status.Temperature), nil
 }
 
 func (e *Executor) Execute(ctx context.Context, w *watering.Watering) error {

@@ -8,4 +8,5 @@ import (
 
 type HumidityReferenceRepository interface {
 	GetByZone(ctx context.Context, zone string) (*ml.HumidityReference, error)
+	Zones(ctx context.Context) ([]string, error)
 }

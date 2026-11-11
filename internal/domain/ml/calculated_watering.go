@@ -1,7 +1,6 @@
 package ml
 
 import (
-	"errors"
 	"time"
 
 	"github.com/bruli-lab/go-core/event"
@@ -18,11 +17,12 @@ const (
 	ZoneRecentlyExecutedByModelReason = "zone_recently_executed_by_model"
 	IsNightRangeReason                = "is_night_range"
 	PredictionPendingValidationReason = "prediction_pending_validation"
+	SoilMeasureUnavailableReason      = "soil_measure_unavailable"
 
 	DefaultSecondsOnLowHumidity = 20
-)
 
-var ErrUnknownZone = errors.New("unknown zone")
+	SafetyWateringInterval = 6 * time.Hour
+)
 
 type CalculatedWatering struct {
 	event.BasicAggregateRoot
@@ -31,6 +31,7 @@ type CalculatedWatering struct {
 	executions      Executions
 	calculatedZones map[string]bool
 	zonesHumidity   map[string]*ZoneHumidity
+	ambient         AmbientTemperature
 	timeFunc        func() time.Time
 }
 
@@ -78,17 +79,14 @@ func (c *CalculatedWatering) allowedFromSystem() bool {
 	}
 }
 
-func (c *CalculatedWatering) allowedFromZone(zone string, currentHumidity float64) (bool, error) {
+func (c *CalculatedWatering) allowedFromZone(zone string, currentHumidity float64) bool {
 	ex, ok := c.executions[zone]
-	if !ok {
-		return false, ErrUnknownZone
-	}
-	if ex.IsRecentlyExecuted(c.timeFunc()) {
+	if ok && ex.IsRecentlyExecuted(c.timeFunc()) {
 		c.Record(NewWateringZoneSkippedEvent(zone, ZoneRecentlyExecutedByModelReason, currentHumidity, nil, nil, nil))
 		c.calculatedZones[zone] = true
-		return false, nil
+		return false
 	}
-	return true, nil
+	return true
 }
 
 func (c *CalculatedWatering) isNightRange() bool {
@@ -150,6 +148,33 @@ func (c *CalculatedWatering) FromPrediction(pred *Prediction, zh *ZoneHumidity) 
 	))
 }
 
+func (c *CalculatedWatering) safetyWatering(zh *ZoneHumidity) {
+	c.calculatedZones[zh.Zone()] = true
+	if ex, ok := c.executions[zh.Zone()]; ok && c.timeFunc().Sub(ex.ExecutionTime()) < SafetyWateringInterval {
+		c.skipUnmeasured(zh.Zone(), "no recent soil moisture reading, watered less than 6h ago")
+		return
+	}
+	if !c.ambient.IsHot() {
+		c.skipUnmeasured(zh.Zone(), "no recent soil moisture reading, not hot enough for a safety watering")
+		return
+	}
+	reason := "no recent soil moisture reading, safety watering"
+	c.Record(NewWateringRequestedEvent(
+		zh.Zone(),
+		SoilMeasureUnavailableReason,
+		DefaultSecondsOnLowHumidity,
+		0,
+		zh.HumidityReference().TargetMoistureVoltage(),
+		nil,
+		&reason,
+		nil,
+	))
+}
+
+func (c *CalculatedWatering) skipUnmeasured(zone, reason string) {
+	c.Record(NewWateringZoneSkippedEvent(zone, SoilMeasureUnavailableReason, 0, nil, &reason, nil))
+}
+
 func NewCalculatedWatering(
 	isRaining bool,
 	systemActivated bool,
@@ -157,7 +182,8 @@ func NewCalculatedWatering(
 	exec Executions,
 	zonesHumidity []*ZoneHumidity,
 	pendingPredictionLogsZones map[string]bool,
-) (*CalculatedWatering, error) {
+	ambient AmbientTemperature,
+) *CalculatedWatering {
 	calcZones := make(map[string]bool, len(zonesHumidity))
 	zoneHumMap := make(map[string]*ZoneHumidity, len(zonesHumidity))
 	for _, zh := range zonesHumidity {
@@ -172,15 +198,20 @@ func NewCalculatedWatering(
 		timeFunc:        timeFunc,
 		calculatedZones: calcZones,
 		zonesHumidity:   zoneHumMap,
+		ambient:         ambient,
 	}
 
 	if !cw.allowedFromSystem() {
-		return &cw, nil
+		return &cw
 	}
 
 	for _, zh := range zonesHumidity {
 		zone := zh.Zone()
 		currentHumidity := zh.CurrentHumidity()
+		if !zh.Measured() {
+			cw.safetyWatering(zh)
+			continue
+		}
 		if _, ok := pendingPredictionLogsZones[zone]; ok {
 			cw.Record(NewWateringZoneSkippedEvent(
 				zh.Zone(),
@@ -193,11 +224,7 @@ func NewCalculatedWatering(
 			cw.calculatedZones[zh.Zone()] = true
 			continue
 		}
-		allowed, err := cw.allowedFromZone(zone, currentHumidity)
-		if err != nil {
-			return nil, err
-		}
-		if !allowed {
+		if !cw.allowedFromZone(zone, currentHumidity) {
 			continue
 		}
 
@@ -221,5 +248,5 @@ func NewCalculatedWatering(
 		}
 	}
 
-	return &cw, nil
+	return &cw
 }

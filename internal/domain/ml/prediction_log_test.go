@@ -165,3 +165,26 @@ func TestPredictionLog_AddValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestPredictionLog_Expire(t *testing.T) {
+	t.Parallel()
+	createdAt := time.Date(2026, 8, 3, 12, 0, 0, 0, time.UTC)
+	pl, err := ml.NewPredictionLog(uuid.New(), "zone", true, 20, "reason", 1.7, true, 1.3, createdAt)
+	require.NoError(t, err)
+
+	expiredAt := createdAt.Add(3 * time.Hour)
+	pl.Expire(expiredAt)
+
+	require.Equal(t, ml.PredictionLogStatusExpired, pl.Status())
+	require.Equal(t, expiredAt, *pl.ValidationAt())
+	require.Nil(t, pl.MoistureAfter())
+	require.Nil(t, pl.ReachedTarget())
+	require.Empty(t, pl.Events())
+}
+
+func TestParsePredictionLogStatus_Expired(t *testing.T) {
+	t.Parallel()
+	got, err := ml.ParsePredictionLogStatus("expired")
+	require.NoError(t, err)
+	require.Equal(t, ml.PredictionLogStatusExpired, got)
+}

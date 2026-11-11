@@ -25,6 +25,7 @@ type CalculateWatering struct {
 	executionRepo     ExecutionRepository
 	predictionLogRepo PredictionLogRepository
 	statusRepo        StatusRepository
+	forecastRepo      ForecastRepository
 	now               func() time.Time
 }
 
@@ -61,10 +62,9 @@ func (c *CalculateWatering) calculate(ctx context.Context) (*ml.CalculatedWateri
 		return nil, err
 	}
 
-	cw, err := ml.NewCalculatedWatering(st.Raining(), st.Active(), c.now, exec, zoneHum, pendingPredictionLogs)
-	if err != nil {
-		return nil, err
-	}
+	cw := ml.NewCalculatedWatering(
+		st.Raining(), st.Active(), c.now, exec, zoneHum, pendingPredictionLogs, c.ambientTemperature(ctx, st),
+	)
 	if cw.Calculated() {
 		return cw, nil
 	}
@@ -83,20 +83,41 @@ func (c *CalculateWatering) calculate(ctx context.Context) (*ml.CalculatedWateri
 	return cw, nil
 }
 
+func (c *CalculateWatering) ambientTemperature(ctx context.Context, st *ml.Status) ml.AmbientTemperature {
+	sensor := st.Temperature()
+	forecast, err := c.forecastRepo.TemperatureAt(ctx, c.now())
+	if err != nil {
+		forecast = nil
+	}
+	return ml.NewAmbientTemperature(forecast, &sensor)
+}
+
 func (c *CalculateWatering) zonesHumidity(
 	ctx context.Context,
 	measures []ml.SoilMeasure,
 ) ([]*ml.ZoneHumidity, map[string]*ml.ZoneHumidity, error) {
-	zoneHumMap := make(map[string]*ml.ZoneHumidity, len(measures))
-	zoneHum := make([]*ml.ZoneHumidity, 0, len(measures))
+	zones, err := c.humidityRefRepo.Zones(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	measureByZone := make(map[string]ml.SoilMeasure, len(measures))
 	for _, measure := range measures {
-		ref, err := c.humidityRefRepo.GetByZone(ctx, measure.Zone())
+		measureByZone[measure.Zone()] = measure
+	}
+
+	zoneHumMap := make(map[string]*ml.ZoneHumidity, len(zones))
+	zoneHum := make([]*ml.ZoneHumidity, 0, len(zones))
+	for _, zone := range zones {
+		ref, err := c.humidityRefRepo.GetByZone(ctx, zone)
 		if err != nil {
 			return nil, nil, err
 		}
-		hum := ml.NewZoneHumidity(measure.Zone(), measure.Humidity(), ref)
+		hum := ml.NewUnmeasuredZoneHumidity(zone, ref)
+		if measure, ok := measureByZone[zone]; ok {
+			hum = ml.NewZoneHumidity(zone, measure.Humidity(), ref)
+		}
 		zoneHum = append(zoneHum, hum)
-		zoneHumMap[measure.Zone()] = hum
+		zoneHumMap[zone] = hum
 	}
 	return zoneHum, zoneHumMap, nil
 }
@@ -108,6 +129,7 @@ func NewCalculateWatering(
 	executionRepo ExecutionRepository,
 	predictionLogRepo PredictionLogRepository,
 	statusRepo StatusRepository,
+	forecastRepo ForecastRepository,
 	now func() time.Time,
 ) *CalculateWatering {
 	return &CalculateWatering{
@@ -117,6 +139,7 @@ func NewCalculateWatering(
 		executionRepo:     executionRepo,
 		predictionLogRepo: predictionLogRepo,
 		statusRepo:        statusRepo,
+		forecastRepo:      forecastRepo,
 		now:               now,
 	}
 }

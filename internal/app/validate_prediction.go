@@ -55,7 +55,24 @@ func (v ValidatePrediction) validate(ctx context.Context, limit time.Time) ([]ev
 		}
 		events = append(events, pl.Events()...)
 	}
+	if err := v.expireStale(ctx, limit); err != nil {
+		return nil, err
+	}
 	return events, nil
+}
+
+func (v ValidatePrediction) expireStale(ctx context.Context, limit time.Time) error {
+	stale, err := v.predictionLogRepo.GetPendingBefore(ctx, limit.Add(-ml.MaxPendingValidationAge))
+	if err != nil {
+		return err
+	}
+	for _, pl := range stale {
+		pl.Expire(v.now())
+		if err := v.predictionLogRepo.Save(ctx, pl); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func NewValidatePrediction(

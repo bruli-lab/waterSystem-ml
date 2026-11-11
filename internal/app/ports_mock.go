@@ -221,6 +221,9 @@ var _ HumidityReferenceRepository = &HumidityReferenceRepositoryMock{}
 //			GetByZoneFunc: func(ctx context.Context, zone string) (*ml.HumidityReference, error) {
 //				panic("mock out the GetByZone method")
 //			},
+//			ZonesFunc: func(ctx context.Context) ([]string, error) {
+//				panic("mock out the Zones method")
+//			},
 //		}
 //
 //		// use mockedHumidityReferenceRepository in code that requires HumidityReferenceRepository
@@ -231,6 +234,9 @@ type HumidityReferenceRepositoryMock struct {
 	// GetByZoneFunc mocks the GetByZone method.
 	GetByZoneFunc func(ctx context.Context, zone string) (*ml.HumidityReference, error)
 
+	// ZonesFunc mocks the Zones method.
+	ZonesFunc func(ctx context.Context) ([]string, error)
+
 	// calls tracks calls to the methods.
 	calls struct {
 		// GetByZone holds details about calls to the GetByZone method.
@@ -240,8 +246,14 @@ type HumidityReferenceRepositoryMock struct {
 			// Zone is the zone argument value.
 			Zone string
 		}
+		// Zones holds details about calls to the Zones method.
+		Zones []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 	}
 	lockGetByZone sync.RWMutex
+	lockZones     sync.RWMutex
 }
 
 // GetByZone calls GetByZoneFunc.
@@ -277,6 +289,38 @@ func (mock *HumidityReferenceRepositoryMock) GetByZoneCalls() []struct {
 	mock.lockGetByZone.RLock()
 	calls = mock.calls.GetByZone
 	mock.lockGetByZone.RUnlock()
+	return calls
+}
+
+// Zones calls ZonesFunc.
+func (mock *HumidityReferenceRepositoryMock) Zones(ctx context.Context) ([]string, error) {
+	if mock.ZonesFunc == nil {
+		panic("HumidityReferenceRepositoryMock.ZonesFunc: method is nil but HumidityReferenceRepository.Zones was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockZones.Lock()
+	mock.calls.Zones = append(mock.calls.Zones, callInfo)
+	mock.lockZones.Unlock()
+	return mock.ZonesFunc(ctx)
+}
+
+// ZonesCalls gets all the calls that were made to Zones.
+// Check the length with:
+//
+//	len(mockedHumidityReferenceRepository.ZonesCalls())
+func (mock *HumidityReferenceRepositoryMock) ZonesCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockZones.RLock()
+	calls = mock.calls.Zones
+	mock.lockZones.RUnlock()
 	return calls
 }
 
@@ -356,6 +400,9 @@ var _ PredictionLogRepository = &PredictionLogRepositoryMock{}
 //
 //		// make and configure a mocked PredictionLogRepository
 //		mockedPredictionLogRepository := &PredictionLogRepositoryMock{
+//			GetPendingBeforeFunc: func(ctx context.Context, before time.Time) ([]*ml.PredictionLog, error) {
+//				panic("mock out the GetPendingBefore method")
+//			},
 //			GetPendingByZoneFunc: func(ctx context.Context, zone string, limit time.Time) (*ml.PredictionLog, error) {
 //				panic("mock out the GetPendingByZone method")
 //			},
@@ -372,6 +419,9 @@ var _ PredictionLogRepository = &PredictionLogRepositoryMock{}
 //
 //	}
 type PredictionLogRepositoryMock struct {
+	// GetPendingBeforeFunc mocks the GetPendingBefore method.
+	GetPendingBeforeFunc func(ctx context.Context, before time.Time) ([]*ml.PredictionLog, error)
+
 	// GetPendingByZoneFunc mocks the GetPendingByZone method.
 	GetPendingByZoneFunc func(ctx context.Context, zone string, limit time.Time) (*ml.PredictionLog, error)
 
@@ -383,6 +433,13 @@ type PredictionLogRepositoryMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetPendingBefore holds details about calls to the GetPendingBefore method.
+		GetPendingBefore []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Before is the before argument value.
+			Before time.Time
+		}
 		// GetPendingByZone holds details about calls to the GetPendingByZone method.
 		GetPendingByZone []struct {
 			// Ctx is the ctx argument value.
@@ -405,9 +462,46 @@ type PredictionLogRepositoryMock struct {
 			Pl *ml.PredictionLog
 		}
 	}
+	lockGetPendingBefore          sync.RWMutex
 	lockGetPendingByZone          sync.RWMutex
 	lockGetPendingValidationZones sync.RWMutex
 	lockSave                      sync.RWMutex
+}
+
+// GetPendingBefore calls GetPendingBeforeFunc.
+func (mock *PredictionLogRepositoryMock) GetPendingBefore(ctx context.Context, before time.Time) ([]*ml.PredictionLog, error) {
+	if mock.GetPendingBeforeFunc == nil {
+		panic("PredictionLogRepositoryMock.GetPendingBeforeFunc: method is nil but PredictionLogRepository.GetPendingBefore was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Before time.Time
+	}{
+		Ctx:    ctx,
+		Before: before,
+	}
+	mock.lockGetPendingBefore.Lock()
+	mock.calls.GetPendingBefore = append(mock.calls.GetPendingBefore, callInfo)
+	mock.lockGetPendingBefore.Unlock()
+	return mock.GetPendingBeforeFunc(ctx, before)
+}
+
+// GetPendingBeforeCalls gets all the calls that were made to GetPendingBefore.
+// Check the length with:
+//
+//	len(mockedPredictionLogRepository.GetPendingBeforeCalls())
+func (mock *PredictionLogRepositoryMock) GetPendingBeforeCalls() []struct {
+	Ctx    context.Context
+	Before time.Time
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Before time.Time
+	}
+	mock.lockGetPendingBefore.RLock()
+	calls = mock.calls.GetPendingBefore
+	mock.lockGetPendingBefore.RUnlock()
+	return calls
 }
 
 // GetPendingByZone calls GetPendingByZoneFunc.
@@ -865,5 +959,77 @@ func (mock *ModelTrainingLogRepositoryMock) SaveCalls() []struct {
 	mock.lockSave.RLock()
 	calls = mock.calls.Save
 	mock.lockSave.RUnlock()
+	return calls
+}
+
+// Ensure, that ForecastRepositoryMock does implement ForecastRepository.
+// If this is not the case, regenerate this file with moq.
+var _ ForecastRepository = &ForecastRepositoryMock{}
+
+// ForecastRepositoryMock is a mock implementation of ForecastRepository.
+//
+//	func TestSomethingThatUsesForecastRepository(t *testing.T) {
+//
+//		// make and configure a mocked ForecastRepository
+//		mockedForecastRepository := &ForecastRepositoryMock{
+//			TemperatureAtFunc: func(ctx context.Context, at time.Time) (*float64, error) {
+//				panic("mock out the TemperatureAt method")
+//			},
+//		}
+//
+//		// use mockedForecastRepository in code that requires ForecastRepository
+//		// and then make assertions.
+//
+//	}
+type ForecastRepositoryMock struct {
+	// TemperatureAtFunc mocks the TemperatureAt method.
+	TemperatureAtFunc func(ctx context.Context, at time.Time) (*float64, error)
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// TemperatureAt holds details about calls to the TemperatureAt method.
+		TemperatureAt []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// At is the at argument value.
+			At time.Time
+		}
+	}
+	lockTemperatureAt sync.RWMutex
+}
+
+// TemperatureAt calls TemperatureAtFunc.
+func (mock *ForecastRepositoryMock) TemperatureAt(ctx context.Context, at time.Time) (*float64, error) {
+	if mock.TemperatureAtFunc == nil {
+		panic("ForecastRepositoryMock.TemperatureAtFunc: method is nil but ForecastRepository.TemperatureAt was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		At  time.Time
+	}{
+		Ctx: ctx,
+		At:  at,
+	}
+	mock.lockTemperatureAt.Lock()
+	mock.calls.TemperatureAt = append(mock.calls.TemperatureAt, callInfo)
+	mock.lockTemperatureAt.Unlock()
+	return mock.TemperatureAtFunc(ctx, at)
+}
+
+// TemperatureAtCalls gets all the calls that were made to TemperatureAt.
+// Check the length with:
+//
+//	len(mockedForecastRepository.TemperatureAtCalls())
+func (mock *ForecastRepositoryMock) TemperatureAtCalls() []struct {
+	Ctx context.Context
+	At  time.Time
+} {
+	var calls []struct {
+		Ctx context.Context
+		At  time.Time
+	}
+	mock.lockTemperatureAt.RLock()
+	calls = mock.calls.TemperatureAt
+	mock.lockTemperatureAt.RUnlock()
 	return calls
 }
