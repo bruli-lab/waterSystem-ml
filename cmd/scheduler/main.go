@@ -28,7 +28,6 @@ import (
 	"github.com/bruli-lab/watersystem-ml/internal/infra/python"
 	"github.com/bruli-lab/watersystem-ml/internal/infra/tracing"
 	watersystem "github.com/bruli-lab/watersystem-ml/internal/infra/water_system"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
