@@ -70,10 +70,6 @@ func (c *CalculatedWatering) allowedFromSystem() bool {
 		c.Record(NewWateringSystemSkippedEvent(SystemDisabledReason))
 		c.markAllCalculated()
 		return false
-	case c.isNightRange():
-		c.Record(NewWateringSystemSkippedEvent(IsNightRangeReason))
-		c.markAllCalculated()
-		return false
 	default:
 		return true
 	}
@@ -243,6 +239,9 @@ func NewCalculatedWatering(
 				nil,
 				nil,
 			))
+			cw.calculatedZones[zone] = true
+		case cw.isNightRange():
+			cw.Record(NewWateringZoneSkippedEvent(zone, IsNightRangeReason, currentHumidity, nil, nil, nil))
 			cw.calculatedZones[zone] = true
 		default:
 		}

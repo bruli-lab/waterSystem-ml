@@ -130,7 +130,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "night skips the whole system before checking zones",
+			name:            "night waters low humidity and skips the model band",
 			systemActivated: true,
 			timeFunc:        nightTimeFunc,
 			exec:            executionsForAllZones(),
@@ -140,10 +140,28 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 			expectedCalculated: true,
 			expectedEvents: []event.Event{
-				&ml.WateringSystemSkippedEvent{},
+				&ml.WateringRequestedEvent{},
+				&ml.WateringZoneSkippedEvent{},
 			},
 			expectedReasons: []string{
+				ml.BelowMinThresholdReason,
 				ml.IsNightRangeReason,
+			},
+		},
+		{
+			name:            "night skips high humidity as above max threshold",
+			systemActivated: true,
+			timeFunc:        nightTimeFunc,
+			exec:            executionsForAllZones(),
+			zonesHumidity: []*ml.ZoneHumidity{
+				zoneHumidity(bonsaiBigZone, highHumidity),
+			},
+			expectedCalculated: true,
+			expectedEvents: []event.Event{
+				&ml.WateringZoneSkippedEvent{},
+			},
+			expectedReasons: []string{
+				ml.AboveMaxThresholdReason,
 			},
 		},
 		{
@@ -331,7 +349,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "night skips a zone without recent soil measure",
+			name:            "night still allows a safety watering without recent soil measure",
 			systemActivated: true,
 			timeFunc:        nightTimeFunc,
 			exec:            executionsForAllZones(),
@@ -340,10 +358,10 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 			expectedCalculated: true,
 			expectedEvents: []event.Event{
-				&ml.WateringSystemSkippedEvent{},
+				&ml.WateringRequestedEvent{},
 			},
 			expectedReasons: []string{
-				ml.IsNightRangeReason,
+				ml.SoilMeasureUnavailableReason,
 			},
 		},
 		{
