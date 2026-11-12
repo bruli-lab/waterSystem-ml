@@ -53,7 +53,8 @@ func TestExecuteWateringOnWateringRequested(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(`Given an ExecuteWateringOnWateringRequested listener,
+		when a WateringRequested event is received `+tt.name, func(t *testing.T) {
 			t.Parallel()
 			rec := &wateringCommandRecorder{executeErr: tt.executeErr}
 			l := listener.NewExecuteWateringOnWateringRequested(rec)

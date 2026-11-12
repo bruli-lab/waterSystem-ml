@@ -97,7 +97,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 		expectedReasons            []string
 	}{
 		{
-			name:            "raining skips the whole system before checking zones",
+			name:            "while it is raining, then it skips the whole system before checking zones",
 			isRaining:       true,
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
@@ -115,7 +115,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "disabled system skips the whole system before checking zones",
+			name:            "with the system disabled, then it skips the whole system before checking zones",
 			systemActivated: false,
 			timeFunc:        dayTimeFunc,
 			exec:            executionsForAllZones(),
@@ -132,7 +132,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "night waters low humidity and skips the model band",
+			name:            "at night with low and medium humidity, then it waters the low zone and skips the medium one",
 			systemActivated: true,
 			timeFunc:        nightTimeFunc,
 			exec:            executionsForAllZones(),
@@ -151,7 +151,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "night skips high humidity as above max threshold",
+			name:            "at night with high humidity, then it skips the zone as above max threshold",
 			systemActivated: true,
 			timeFunc:        nightTimeFunc,
 			exec:            executionsForAllZones(),
@@ -167,7 +167,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "pending validation skips only that zone",
+			name:            "with a pending validation in one zone, then it skips only that zone",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
 			exec:            executionsForAllZones(),
@@ -188,7 +188,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "high humidity skips the zone and low humidity requests watering",
+			name:            "with high and low humidity, then it skips the high zone and waters the low one",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
 			exec:            executionsForAllZones(),
@@ -207,7 +207,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "recent execution skips only that zone and low humidity requests watering in the other zone",
+			name:            "with a recent execution in one zone, then it skips that zone and waters the other low zone",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
 			exec: ml.Executions{
@@ -229,7 +229,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "medium humidity remains pending for prediction",
+			name:            "with medium humidity, then the zone remains pending for prediction",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
 			exec:            executionsForAllZones(),
@@ -241,7 +241,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			expectedPendingZones: []string{bonsaiBigZone, bonsaiSmallZone},
 		},
 		{
-			name:            "recent execution is checked even when humidity is medium",
+			name:            "with a recent execution and medium humidity, then it skips the zone",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
 			exec: ml.Executions{
@@ -262,7 +262,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "zone without recent soil measure requests a safety watering when it is hot",
+			name:            "without recent soil measure and hot weather, then it requests a safety watering",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
 			exec: ml.Executions{
@@ -285,7 +285,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "zone without recent soil measure and no execution history requests a safety watering",
+			name:            "without recent soil measure and no execution history, then it requests a safety watering",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
 			exec:            ml.Executions{},
@@ -301,7 +301,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "zone without recent soil measure is skipped when it is not hot",
+			name:            "without recent soil measure and no hot weather, then it skips the zone",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
 			exec:            ml.Executions{bonsaiBigZone: staleExecution(bonsaiBigZone)},
@@ -318,7 +318,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "zone without recent soil measure is skipped when it was watered less than 6h ago",
+			name:            "without recent soil measure and a watering less than 6h ago, then it skips the zone",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
 			exec:            ml.Executions{bonsaiBigZone: oldExecution(bonsaiBigZone)},
@@ -334,7 +334,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "zone without recent soil measure ignores pending validation",
+			name:            "without recent soil measure and a pending validation, then it still requests a safety watering",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
 			exec:            ml.Executions{bonsaiBigZone: staleExecution(bonsaiBigZone)},
@@ -351,7 +351,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "night still allows a safety watering without recent soil measure",
+			name:            "at night without recent soil measure, then it still requests a safety watering",
 			systemActivated: true,
 			timeFunc:        nightTimeFunc,
 			exec:            executionsForAllZones(),
@@ -367,7 +367,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "humidity below 15 percent is watered as low humidity",
+			name:            "with humidity below 15 percent, then it waters as low humidity",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
 			exec:            executionsForAllZones(),
@@ -383,7 +383,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "humidity below 15 percent is watered at night",
+			name:            "at night with humidity below 15 percent, then it waters as low humidity",
 			systemActivated: true,
 			timeFunc:        nightTimeFunc,
 			exec:            executionsForAllZones(),
@@ -399,7 +399,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "out of range reading requests a safety watering when it is hot",
+			name:            "with an out of range reading and hot weather, then it requests a safety watering",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
 			exec: ml.Executions{
@@ -422,7 +422,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "out of range reading is skipped when it was watered less than 6h ago",
+			name:            "with an out of range reading and a watering less than 6h ago, then it skips the zone",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
 			exec:            ml.Executions{bonsaiBigZone: oldExecution(bonsaiBigZone)},
@@ -439,7 +439,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "out of range reading is skipped when it is not hot",
+			name:            "with an out of range reading and no hot weather, then it skips the zone",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
 			exec:            ml.Executions{bonsaiBigZone: staleExecution(bonsaiBigZone)},
@@ -456,7 +456,7 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 		},
 		{
-			name:            "zone without execution history is evaluated as not recently watered",
+			name:            "without execution history, then the zone is evaluated as not recently watered",
 			systemActivated: true,
 			timeFunc:        dayTimeFunc,
 			exec: ml.Executions{
@@ -476,7 +476,8 @@ func TestNewCalculatedWatering(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(`Given a CalculatedWatering struct,
+		when it is built `+tt.name, func(t *testing.T) {
 			t.Parallel()
 
 			got := ml.NewCalculatedWatering(
@@ -511,7 +512,7 @@ func TestCalculatedWatering_FromPrediction(t *testing.T) {
 		expectedReasons    []string
 	}{
 		{
-			name: "prediction says watering",
+			name: "with a prediction that says watering, then it requests watering",
 			pred: ml.NewPrediction(uuid.New(), bonsaiBigZone, true, 10, "reason test", 0.5),
 			zh:   zoneHumidity(bonsaiBigZone, mediumHumidity),
 			expectedEvents: []event.Event{
@@ -522,7 +523,7 @@ func TestCalculatedWatering_FromPrediction(t *testing.T) {
 			},
 		},
 		{
-			name: "prediction says no watering",
+			name: "with a prediction that says no watering, then it skips the zone",
 			pred: ml.NewPrediction(uuid.New(), bonsaiBigZone, false, 0, "reason test", 0.5),
 			zh:   zoneHumidity(bonsaiBigZone, mediumHumidity),
 			expectedEvents: []event.Event{
@@ -533,7 +534,7 @@ func TestCalculatedWatering_FromPrediction(t *testing.T) {
 			},
 		},
 		{
-			name: "failed prediction skips zone with prediction error reason",
+			name: "with a failed prediction, then it skips the zone with prediction error reason",
 			pred: ml.NewFailedPrediction(uuid.New(), bonsaiBigZone, "Error loading model: boom"),
 			zh:   zoneHumidity(bonsaiBigZone, mediumHumidity),
 			expectedEvents: []event.Event{
@@ -544,19 +545,20 @@ func TestCalculatedWatering_FromPrediction(t *testing.T) {
 			},
 		},
 		{
-			name: "nil prediction does nothing",
+			name: "without prediction, then it does nothing",
 			pred: nil,
 			zh:   zoneHumidity(bonsaiBigZone, mediumHumidity),
 		},
 		{
-			name: "nil zone humidity does nothing",
+			name: "without zone humidity, then it does nothing",
 			pred: ml.NewPrediction(uuid.New(), bonsaiBigZone, true, 10, "reason test", 0.5),
 			zh:   nil,
 		},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(`Given a CalculatedWatering struct,
+		when FromPrediction method is called `+tt.name, func(t *testing.T) {
 			t.Parallel()
 
 			cw := ml.NewCalculatedWatering(

@@ -19,13 +19,16 @@ func writeZones(t *testing.T, content string) string {
 }
 
 func TestLoadZones_ManifestFile(t *testing.T) {
-	zones, err := config.LoadZones("../../manifests/zones.json")
-	require.NoError(t, err)
-	require.Equal(t, []string{"Bonsai big", "Bonsai small"}, zones.Names())
-	require.Equal(t, map[string]string{
-		"sensor.bonsai_big_bonsai_big_soil_moisture_voltage":     "Bonsai big",
-		"sensor.bonsai_small_bonsai_small_soil_moisture_voltage": "Bonsai small",
-	}, zones.MoistureVoltageMeasurements())
+	t.Run(`Given the zones manifest file,
+		when LoadZones is called, then it returns both bonsai zones with their measurements`, func(t *testing.T) {
+		zones, err := config.LoadZones("../../manifests/zones.json")
+		require.NoError(t, err)
+		require.Equal(t, []string{"Bonsai big", "Bonsai small"}, zones.Names())
+		require.Equal(t, map[string]string{
+			"sensor.bonsai_big_bonsai_big_soil_moisture_voltage":     "Bonsai big",
+			"sensor.bonsai_small_bonsai_small_soil_moisture_voltage": "Bonsai small",
+		}, zones.MoistureVoltageMeasurements())
+	})
 }
 
 func zoneJSON(name, measurement, validFrom string, v40 float64) string {
@@ -38,7 +41,7 @@ func zoneJSON(name, measurement, validFrom string, v40 float64) string {
 func TestLoadZones_Invalid(t *testing.T) {
 	valid := zoneJSON("a", "m", "2026-01-01", 1.5)
 	tests := map[string]string{
-		"empty":            `{"zones": []}`,
+		"no zones":         `{"zones": []}`,
 		"no name":          `{"zones": [` + zoneJSON("", "m", "2026-01-01", 1.5) + `]}`,
 		"no measurement":   `{"zones": [` + zoneJSON("a", "", "2026-01-01", 1.5) + `]}`,
 		"no calibrations":  `{"zones": [{"name": "a", "moisture_voltage_measurement": "m", "calibrations": []}]}`,
@@ -49,7 +52,8 @@ func TestLoadZones_Invalid(t *testing.T) {
 		"malformed json":   `{"zones": [`,
 	}
 	for name, content := range tests {
-		t.Run(name, func(t *testing.T) {
+		t.Run(`Given an invalid zones file,
+		when LoadZones is called with `+name+`, then it returns an error`, func(t *testing.T) {
 			_, err := config.LoadZones(writeZones(t, content))
 			require.Error(t, err)
 		})
@@ -57,8 +61,11 @@ func TestLoadZones_Invalid(t *testing.T) {
 }
 
 func TestLoadZones_MissingFile(t *testing.T) {
-	_, err := config.LoadZones(filepath.Join(t.TempDir(), "missing.json"))
-	require.Error(t, err)
+	t.Run(`Given a path without file,
+		when LoadZones is called, then it returns an error`, func(t *testing.T) {
+		_, err := config.LoadZones(filepath.Join(t.TempDir(), "missing.json"))
+		require.Error(t, err)
+	})
 }
 
 func TestZone_CalibrationAt(t *testing.T) {
@@ -69,14 +76,37 @@ func TestZone_CalibrationAt(t *testing.T) {
 	require.NoError(t, err)
 	zone := zones[0]
 
-	_, ok := zone.CalibrationAt(time.Date(2026, 3, 31, 0, 0, 0, 0, time.UTC))
-	require.False(t, ok)
-
-	c, ok := zone.CalibrationAt(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC))
-	require.True(t, ok)
-	require.InDelta(t, 1.5, c.V40, 1e-9)
-
-	c, ok = zone.CalibrationAt(time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC))
-	require.True(t, ok)
-	require.InDelta(t, 1.6, c.V40, 1e-9)
+	tests := []struct {
+		name  string
+		at    time.Time
+		found bool
+		v40   float64
+	}{
+		{
+			name: "with a date before the first calibration, then it returns no calibration",
+			at:   time.Date(2026, 3, 31, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:  "with a date between calibrations, then it returns the older one",
+			at:    time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC),
+			found: true,
+			v40:   1.5,
+		},
+		{
+			name:  "with a date after the last calibration, then it returns the newest one",
+			at:    time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC),
+			found: true,
+			v40:   1.6,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(`Given a Zone with two calibrations,
+		when CalibrationAt method is called `+tt.name, func(t *testing.T) {
+			c, ok := zone.CalibrationAt(tt.at)
+			require.Equal(t, tt.found, ok)
+			if tt.found {
+				require.InDelta(t, tt.v40, c.V40, 1e-9)
+			}
+		})
+	}
 }

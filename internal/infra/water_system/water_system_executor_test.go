@@ -25,11 +25,18 @@ func unreachableExecutor() *Executor {
 
 func TestExecutor_UnreachableServerReturnsError(t *testing.T) {
 	t.Parallel()
-	e := unreachableExecutor()
 
-	_, err := e.GetStatus(t.Context())
-	require.Error(t, err)
+	t.Run(`Given an Executor with an unreachable server,
+		when GetStatus method is called, then it returns an error`, func(t *testing.T) {
+		t.Parallel()
+		_, err := unreachableExecutor().GetStatus(t.Context())
+		require.Error(t, err)
+	})
 
-	err = e.Execute(t.Context(), watering.New("bonsai big", 20))
-	require.Error(t, err)
+	t.Run(`Given an Executor with an unreachable server,
+		when Execute method is called, then it returns an error`, func(t *testing.T) {
+		t.Parallel()
+		err := unreachableExecutor().Execute(t.Context(), watering.New("bonsai big", 20))
+		require.Error(t, err)
+	})
 }
