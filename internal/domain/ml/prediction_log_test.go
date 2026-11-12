@@ -11,6 +11,8 @@ import (
 )
 
 func TestNewPredictionLog(t *testing.T) {
+	t.Parallel()
+
 	now := time.Date(2026, 8, 3, 12, 0, 0, 0, time.UTC)
 	type args struct {
 		id               uuid.UUID
@@ -127,6 +129,8 @@ func TestNewPredictionLog(t *testing.T) {
 }
 
 func TestPredictionLog_AddValidation(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		at            *time.Time
 		moistureAfter *float64

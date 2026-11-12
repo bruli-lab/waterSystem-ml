@@ -13,6 +13,8 @@ import (
 )
 
 func TestTrainingZone_Handle(t *testing.T) {
+	t.Parallel()
+
 	errTest := errors.New("error")
 	tests := []struct {
 		name                     string

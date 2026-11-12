@@ -8,8 +8,11 @@ import (
 )
 
 func TestNewHumidityReference(t *testing.T) {
+	t.Parallel()
+
 	t.Run(`Given V40 and V100 voltages,
 		when the constructor is called, then it returns the voltages and the 90 percent target`, func(t *testing.T) {
+		t.Parallel()
 		hr := ml.NewHumidityReference(1.472, 1.3)
 		require.InDelta(t, 1.3, hr.V100(), 1e-9)
 		require.InDelta(t, 1.472, hr.V40(), 1e-9)
@@ -18,6 +21,8 @@ func TestNewHumidityReference(t *testing.T) {
 }
 
 func TestHumidityReference_LowAndSuspicious(t *testing.T) {
+	t.Parallel()
+
 	hr := ml.NewHumidityReference(1.8, 1.2)
 	tests := []struct {
 		name       string

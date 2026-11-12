@@ -9,6 +9,8 @@ import (
 )
 
 func TestModelTrainingState_IsRecentlyTraining(t *testing.T) {
+	t.Parallel()
+
 	type fields struct {
 		zone       string
 		trainingAt time.Time

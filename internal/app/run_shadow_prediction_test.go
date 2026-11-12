@@ -13,6 +13,8 @@ import (
 )
 
 func TestRunShadowPrediction_Handle(t *testing.T) {
+	t.Parallel()
+
 	errTest := errors.New("error")
 	prediction := *ml.NewFailedShadowPrediction(bonsaiBigZone, fixedNow, "not_enough_readings", nil)
 	tests := []struct {
@@ -74,6 +76,8 @@ func TestRunShadowPrediction_Handle(t *testing.T) {
 }
 
 func TestTrainDryingModel_Handle(t *testing.T) {
+	t.Parallel()
+
 	errTest := errors.New("error")
 	for name, trainErr := range map[string]error{"succeeds": nil, "fails": errTest} {
 		t.Run(`Given a TrainDryingModel handler,

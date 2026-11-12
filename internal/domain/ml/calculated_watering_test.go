@@ -82,6 +82,8 @@ func requireEvent(t *testing.T, ev, expectedEvent event.Event, expectedReason st
 }
 
 func TestNewCalculatedWatering(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                       string
 		isRaining                  bool
@@ -503,6 +505,8 @@ func TestNewCalculatedWatering(t *testing.T) {
 }
 
 func TestCalculatedWatering_FromPrediction(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name               string
 		pred               *ml.Prediction

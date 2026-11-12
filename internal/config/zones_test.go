@@ -19,8 +19,11 @@ func writeZones(t *testing.T, content string) string {
 }
 
 func TestLoadZones_ManifestFile(t *testing.T) {
+	t.Parallel()
+
 	t.Run(`Given the zones manifest file,
 		when LoadZones is called, then it returns both bonsai zones with their measurements`, func(t *testing.T) {
+		t.Parallel()
 		zones, err := config.LoadZones("../../manifests/zones.json")
 		require.NoError(t, err)
 		require.Equal(t, []string{"Bonsai big", "Bonsai small"}, zones.Names())
@@ -39,6 +42,8 @@ func zoneJSON(name, measurement, validFrom string, v40 float64) string {
 }
 
 func TestLoadZones_Invalid(t *testing.T) {
+	t.Parallel()
+
 	valid := zoneJSON("a", "m", "2026-01-01", 1.5)
 	tests := map[string]string{
 		"no zones":         `{"zones": []}`,
@@ -54,6 +59,7 @@ func TestLoadZones_Invalid(t *testing.T) {
 	for name, content := range tests {
 		t.Run(`Given an invalid zones file,
 		when LoadZones is called with `+name+`, then it returns an error`, func(t *testing.T) {
+			t.Parallel()
 			_, err := config.LoadZones(writeZones(t, content))
 			require.Error(t, err)
 		})
@@ -61,14 +67,19 @@ func TestLoadZones_Invalid(t *testing.T) {
 }
 
 func TestLoadZones_MissingFile(t *testing.T) {
+	t.Parallel()
+
 	t.Run(`Given a path without file,
 		when LoadZones is called, then it returns an error`, func(t *testing.T) {
+		t.Parallel()
 		_, err := config.LoadZones(filepath.Join(t.TempDir(), "missing.json"))
 		require.Error(t, err)
 	})
 }
 
 func TestZone_CalibrationAt(t *testing.T) {
+	t.Parallel()
+
 	zones, err := config.LoadZones(writeZones(t, `{"zones": [{"name": "a", "moisture_voltage_measurement": "m", "calibrations": [
 		{"valid_from": "2026-09-01", "v40": 1.6, "v100": 1.4},
 		{"valid_from": "2026-04-01", "v40": 1.5, "v100": 1.3}
@@ -102,6 +113,7 @@ func TestZone_CalibrationAt(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(`Given a Zone with two calibrations,
 		when CalibrationAt method is called `+tt.name, func(t *testing.T) {
+			t.Parallel()
 			c, ok := zone.CalibrationAt(tt.at)
 			require.Equal(t, tt.found, ok)
 			if tt.found {

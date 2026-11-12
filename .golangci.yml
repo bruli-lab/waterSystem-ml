@@ -46,6 +46,8 @@ linters:
     - prealloc
     - nakedret
     - testifylint
+    - paralleltest
+    - tparallel
 
   settings:
     errcheck:

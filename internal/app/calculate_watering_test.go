@@ -14,6 +14,8 @@ import (
 )
 
 func TestCalculateWatering_Handle(t *testing.T) {
+	t.Parallel()
+
 	errTest := errors.New("error")
 
 	defaultStatus := ml.NewStatus(true, false, 20)

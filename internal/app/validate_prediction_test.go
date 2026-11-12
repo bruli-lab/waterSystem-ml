@@ -15,6 +15,8 @@ import (
 )
 
 func TestValidatePrediction_Handle(t *testing.T) {
+	t.Parallel()
+
 	errTest := errors.New("error")
 	measures := []ml.SoilMeasure{
 		ptr.FromPointer(ml.NewSoilMeasure(bonsaiBigZone, 20)),
