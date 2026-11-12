@@ -95,12 +95,22 @@ func NewPublishMessageOnPredictionError(ch cqs.CommandHandler) *ZoneProblemNotif
 }
 
 func NewPublishMessageOnSoilMeasureUnavailable(ch cqs.CommandHandler) *ZoneProblemNotifier {
-	return newZoneProblemNotifier(ch, "Soil sensor", ml.SoilMeasureUnavailableReason,
+	return newZoneProblemNotifier(ch, "Soil sensor", ml.SoilMeasureUnavailableReason, soilMeasureRecoveryReasons()...)
+}
+
+func NewPublishMessageOnSoilMeasureSuspicious(ch cqs.CommandHandler) *ZoneProblemNotifier {
+	return newZoneProblemNotifier(ch, "Soil sensor out of range", ml.SoilMeasureSuspiciousReason,
+		soilMeasureRecoveryReasons()...)
+}
+
+func soilMeasureRecoveryReasons() []string {
+	return []string{
 		ml.AboveMaxThresholdReason,
 		ml.BelowMinThresholdReason,
 		ml.ModelPredictionReason,
 		ml.ModelNotEstimatedReason,
 		ml.PredictionErrorReason,
 		ml.PredictionPendingValidationReason,
-	)
+		ml.IsNightRangeReason,
+	}
 }

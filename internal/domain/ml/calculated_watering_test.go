@@ -19,6 +19,8 @@ const (
 	highHumidity    = 1.45
 	lowHumidity     = 1.85
 	mediumHumidity  = 1.7
+	dryHumidity     = 2.2
+	outOfRange      = 2.6
 )
 
 var dayTimeFunc = func() time.Time {
@@ -362,6 +364,95 @@ func TestNewCalculatedWatering(t *testing.T) {
 			},
 			expectedReasons: []string{
 				ml.SoilMeasureUnavailableReason,
+			},
+		},
+		{
+			name:            "humidity below 15 percent is watered as low humidity",
+			systemActivated: true,
+			timeFunc:        dayTimeFunc,
+			exec:            executionsForAllZones(),
+			zonesHumidity: []*ml.ZoneHumidity{
+				zoneHumidity(bonsaiBigZone, dryHumidity),
+			},
+			expectedCalculated: true,
+			expectedEvents: []event.Event{
+				&ml.WateringRequestedEvent{},
+			},
+			expectedReasons: []string{
+				ml.BelowMinThresholdReason,
+			},
+		},
+		{
+			name:            "humidity below 15 percent is watered at night",
+			systemActivated: true,
+			timeFunc:        nightTimeFunc,
+			exec:            executionsForAllZones(),
+			zonesHumidity: []*ml.ZoneHumidity{
+				zoneHumidity(bonsaiBigZone, dryHumidity),
+			},
+			expectedCalculated: true,
+			expectedEvents: []event.Event{
+				&ml.WateringRequestedEvent{},
+			},
+			expectedReasons: []string{
+				ml.BelowMinThresholdReason,
+			},
+		},
+		{
+			name:            "out of range reading requests a safety watering when it is hot",
+			systemActivated: true,
+			timeFunc:        dayTimeFunc,
+			exec: ml.Executions{
+				bonsaiBigZone:   staleExecution(bonsaiBigZone),
+				bonsaiSmallZone: staleExecution(bonsaiSmallZone),
+			},
+			zonesHumidity: []*ml.ZoneHumidity{
+				zoneHumidity(bonsaiBigZone, outOfRange),
+				zoneHumidity(bonsaiSmallZone, lowHumidity),
+			},
+			ambient:            ml.NewAmbientTemperature(new(30.0), nil),
+			expectedCalculated: true,
+			expectedEvents: []event.Event{
+				&ml.WateringRequestedEvent{},
+				&ml.WateringRequestedEvent{},
+			},
+			expectedReasons: []string{
+				ml.SoilMeasureSuspiciousReason,
+				ml.BelowMinThresholdReason,
+			},
+		},
+		{
+			name:            "out of range reading is skipped when it was watered less than 6h ago",
+			systemActivated: true,
+			timeFunc:        dayTimeFunc,
+			exec:            ml.Executions{bonsaiBigZone: oldExecution(bonsaiBigZone)},
+			zonesHumidity: []*ml.ZoneHumidity{
+				zoneHumidity(bonsaiBigZone, outOfRange),
+			},
+			ambient:            ml.NewAmbientTemperature(new(30.0), nil),
+			expectedCalculated: true,
+			expectedEvents: []event.Event{
+				&ml.WateringZoneSkippedEvent{},
+			},
+			expectedReasons: []string{
+				ml.SoilMeasureSuspiciousReason,
+			},
+		},
+		{
+			name:            "out of range reading is skipped when it is not hot",
+			systemActivated: true,
+			timeFunc:        dayTimeFunc,
+			exec:            ml.Executions{bonsaiBigZone: staleExecution(bonsaiBigZone)},
+			zonesHumidity: []*ml.ZoneHumidity{
+				zoneHumidity(bonsaiBigZone, outOfRange),
+			},
+			ambient:            ml.NewAmbientTemperature(new(20.0), new(30.0)),
+			expectedCalculated: true,
+			expectedEvents: []event.Event{
+				&ml.WateringZoneSkippedEvent{},
+			},
+			expectedReasons: []string{
+				ml.SoilMeasureSuspiciousReason,
 			},
 		},
 		{

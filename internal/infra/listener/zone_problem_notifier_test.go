@@ -162,3 +162,52 @@ func TestPublishMessageOnSoilMeasureUnavailable(t *testing.T) {
 		})
 	}
 }
+
+func TestPublishMessageOnSoilMeasureSuspicious(t *testing.T) {
+	t.Parallel()
+
+	suspicious := func() event.Event {
+		return ml.NewWateringZoneSkippedEvent(zone, ml.SoilMeasureSuspiciousReason, 2.6, nil, new("out of range"), nil)
+	}
+	tests := []struct {
+		name          string
+		events        []event.Event
+		expectedTexts []string
+	}{
+		{
+			name:          "repeated out of range readings notify only once",
+			events:        []event.Event{suspicious(), suspicious()},
+			expectedTexts: []string{"Soil sensor out of range ERROR"},
+		},
+		{
+			name: "a night skip after the failure notifies the recovery",
+			events: []event.Event{
+				suspicious(),
+				ml.NewWateringZoneSkippedEvent(zone, ml.IsNightRangeReason, 1.7, nil, nil, nil),
+			},
+			expectedTexts: []string{"Soil sensor out of range ERROR", "Soil sensor out of range RECOVERED"},
+		},
+		{
+			name: "an unavailable sensor is not a recovery",
+			events: []event.Event{
+				suspicious(),
+				ml.NewWateringZoneSkippedEvent(zone, ml.SoilMeasureUnavailableReason, 0, nil, new("no reading"), nil),
+			},
+			expectedTexts: []string{"Soil sensor out of range ERROR"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			rec := &commandRecorder{}
+			l := listener.NewPublishMessageOnSoilMeasureSuspicious(rec)
+			for _, ev := range tt.events {
+				require.NoError(t, l.Listen(t.Context(), ev))
+			}
+			require.Len(t, rec.messages, len(tt.expectedTexts))
+			for i, text := range tt.expectedTexts {
+				require.Contains(t, rec.messages[i], text, "message %d", i)
+			}
+		})
+	}
+}
