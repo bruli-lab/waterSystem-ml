@@ -165,8 +165,8 @@ def training_samples(frame: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series, dict
     rises = int(frame["rise_without_watering"].sum())
     samples = frame[frame["valid"]]
     stats = {
-        "hours": int(len(frame)),
-        "samples": int(len(samples)),
+        "hours": len(frame),
+        "samples": len(samples),
         "discarded_rises": rises,
     }
     return samples[FEATURES], samples["delta"], stats

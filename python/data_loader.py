@@ -2,12 +2,11 @@ import os
 import sys
 import time
 import warnings
-from typing import Optional
 
 import pandas as pd
+from features import normalize_zone
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.warnings import MissingPivotFunction
-from features import normalize_zone
 from zones import load_zones, voltages_to_percentage
 
 warnings.simplefilter("ignore", MissingPivotFunction)
@@ -71,7 +70,7 @@ def _query_to_df(query: str, query_name: str = "influxdb") -> pd.DataFrame:
     return df
 
 
-def load_logs_data(zone: Optional[str] = None, start: str = "-90d") -> pd.DataFrame:
+def load_logs_data(zone: str | None = None, start: str = "-90d") -> pd.DataFrame:
     if zone:
         zone_filter = f'|> filter(fn: (r) => strings.hasPrefix(v: r.zone, prefix: "{zone}"))'
     else:
@@ -146,7 +145,7 @@ from(bucket: "{INFLUXDB_BUCKET}")
     return df[["_time", "temperature", "weather_is_raining_last"]].sort_values("_time")
 
 
-def load_forecast_data(start: str = "-90d", stop: Optional[str] = None) -> pd.DataFrame:
+def load_forecast_data(start: str = "-90d", stop: str | None = None) -> pd.DataFrame:
     stop_clause = f", stop: {stop}" if stop else ""
     query = f'''
 from(bucket: "{INFLUXDB_BUCKET}")
@@ -235,7 +234,7 @@ from(bucket: "{INFLUXDB_BUCKET}")
     ].sort_values(["_time", "forecast_generated_at"])
 
 
-def load_soil_moisture_data(zone: Optional[str] = None, start: str = "-90d", clip: bool = True) -> pd.DataFrame:
+def load_soil_moisture_data(zone: str | None = None, start: str = "-90d", clip: bool = True) -> pd.DataFrame:
     zones = [z for z in load_zones() if not zone or z.name == normalize_zone(zone)]
     empty = pd.DataFrame(columns=["_time", "zone", "soil_moisture"])
     if not zones:
@@ -279,7 +278,7 @@ from(bucket: "{INFLUXDB_BUCKET}")
     return pd.concat(parts, ignore_index=True).sort_values(["zone", "_time"]).reset_index(drop=True)
 
 
-def load_soil_temperature_data(zone: Optional[str] = None, start: str = "-90d") -> pd.DataFrame:
+def load_soil_temperature_data(zone: str | None = None, start: str = "-90d") -> pd.DataFrame:
     measurement_to_zone = {
         z.soil_temperature_measurement: z.name
         for z in load_zones()
@@ -395,7 +394,7 @@ def _merge_sensor_asof_by_zone(
     return pd.concat(parts, ignore_index=True).sort_values(["zone", "_time"]).reset_index(drop=True)
 
 
-def load_training_data(zone: Optional[str] = None, start: str = "-90d") -> pd.DataFrame:
+def load_training_data(zone: str | None = None, start: str = "-90d") -> pd.DataFrame:
     df_logs = load_logs_data(zone=zone, start=start)
     df_weather = load_weather_data(start=start)
     df_forecast = load_forecast_data(start=start)
@@ -444,7 +443,7 @@ def load_training_data(zone: Optional[str] = None, start: str = "-90d") -> pd.Da
     return df
 
 
-def load_prediction_data(zone: Optional[str] = None, lookback: str = "-30d") -> pd.DataFrame:
+def load_prediction_data(zone: str | None = None, lookback: str = "-30d") -> pd.DataFrame:
     # En predicció ja NO carreguem soil_moisture.
     # Go ja haurà decidit si toca cridar el model o no.
     # Weather, forecast i temperatura del substrat només necessiten el valor

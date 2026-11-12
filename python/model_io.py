@@ -6,7 +6,6 @@ import warnings
 import joblib
 from sklearn.exceptions import InconsistentVersionWarning
 
-
 MODEL_DIR = os.getenv("MODEL_DIR", "./models")
 
 

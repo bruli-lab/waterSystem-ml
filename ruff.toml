@@ -1,0 +1,7 @@
+target-version = "py315"
+line-length = 120
+include = ["python/**/*.py"]
+
+[lint.per-file-ignores]
+"python/predict.py" = ["BLE001"]
+"python/shadow.py" = ["BLE001"]

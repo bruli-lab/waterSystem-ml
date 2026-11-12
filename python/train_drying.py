@@ -2,12 +2,10 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import joblib
 import sklearn
-from sklearn.ensemble import HistGradientBoostingRegressor
-
 from data_loader import (
     load_forecast_data,
     load_logs_data,
@@ -18,11 +16,12 @@ from data_loader import (
 from drying import FEATURES, build_frame, hourly_humidity, training_samples
 from features import normalize_zone
 from model_io import MODEL_DIR, slugify_zone
+from sklearn.ensemble import HistGradientBoostingRegressor
 
 TRAINING_START = "-365d"
 PESSIMISTIC_QUANTILE = 0.2
 MIN_SAMPLES = 200
-MODEL_PARAMS = dict(max_iter=300, learning_rate=0.05, max_leaf_nodes=15, min_samples_leaf=30, random_state=0)
+MODEL_PARAMS = {"max_iter": 300, "learning_rate": 0.05, "max_leaf_nodes": 15, "min_samples_leaf": 30, "random_state": 0}
 
 
 def drying_dir(zone: str) -> str:
@@ -68,7 +67,7 @@ def train_zone(zone: str) -> bool:
     median, pessimistic = fit_models(X, y)
     metadata = {
         "zone": zone,
-        "trained_at": datetime.now(timezone.utc).isoformat(),
+        "trained_at": datetime.now(UTC).isoformat(),
         "features": FEATURES,
         "pessimistic_quantile": PESSIMISTIC_QUANTILE,
         "sklearn_version": sklearn.__version__,

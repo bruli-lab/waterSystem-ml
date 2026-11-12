@@ -2,7 +2,7 @@ import json
 import os
 from dataclasses import dataclass
 from datetime import date
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 
 import pandas as pd
@@ -52,7 +52,7 @@ def _parse_zone(raw: dict) -> Zone:
     )
 
 
-@lru_cache(maxsize=None)
+@cache
 def load_zones(path: str | None = None) -> tuple[Zone, ...]:
     zones_file = Path(path or os.getenv("ZONES_FILE") or DEFAULT_ZONES_FILE)
     with zones_file.open(encoding="utf-8") as f:

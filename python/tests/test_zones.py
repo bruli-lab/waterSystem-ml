@@ -7,8 +7,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import data_loader  # noqa: E402
-import zones  # noqa: E402
+import data_loader
+import zones
 
 
 def write_zones(tmp_path, content):

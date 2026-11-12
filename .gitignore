@@ -1,5 +1,8 @@
 python/.venv/
-python/__pycache__/
+__pycache__/
+.ruff_cache/
+.pytest_cache/
+.task/
 python/models/*
 .env
 tmp/
