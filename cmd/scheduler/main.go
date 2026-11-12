@@ -155,14 +155,19 @@ func run() error {
 	saveWaterSkippedLogWSList := listener.NewSaveWateringSkippedLogOnWateringSystemSkipped(commandBus)
 	publishMsgPredErrList := listener.NewPublishMessageOnPredictionError(commandBus)
 	publishMsgSensorList := listener.NewPublishMessageOnSoilMeasureUnavailable(commandBus)
+	publishMsgSuspiciousList := listener.NewPublishMessageOnSoilMeasureSuspicious(commandBus)
 	checkModelPredValFailedList := listener.NewCheckModelOnPredictionValidationFailed(commandBus)
 	trainModelZoneModelDegradedList := listener.NewTrainModelOnZoneModelDegraded(trainCh)
 
 	eventBus := event.NewBus()
 	eventBus.Subscribe(
-		ml.WateringRequestedEventName, publishMsgList, execWatOnWaterSysList, publishMsgPredErrList, publishMsgSensorList,
+		ml.WateringRequestedEventName,
+		publishMsgList, execWatOnWaterSysList, publishMsgPredErrList, publishMsgSensorList, publishMsgSuspiciousList,
 	)
-	eventBus.Subscribe(ml.WateringZoneSkippedEventName, saveWaterSkippedLogWZList, publishMsgPredErrList, publishMsgSensorList)
+	eventBus.Subscribe(
+		ml.WateringZoneSkippedEventName,
+		saveWaterSkippedLogWZList, publishMsgPredErrList, publishMsgSensorList, publishMsgSuspiciousList,
+	)
 	eventBus.Subscribe(ml.WateringSystemSkippedEventName, saveWaterSkippedLogWSList)
 	eventBus.Subscribe(ml.PredictionValidationFailedEventName, checkModelPredValFailedList)
 	eventBus.Subscribe(ml.ZoneModelDegradedEventName, trainModelZoneModelDegradedList)

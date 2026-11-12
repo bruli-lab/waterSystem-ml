@@ -35,6 +35,11 @@ tasks:
     cmds:
       - '{{.PIP}} install --upgrade pip'
       - '{{.PIP}} install -r python/requirements-dev.txt'
+    sources:
+      - python/requirements.txt
+      - python/requirements-dev.txt
+    generates:
+      - '{{.PY}}'
 
   train:
     desc: Executing train.py
@@ -42,8 +47,17 @@ tasks:
       - '{{.PY}} python/train.py --zone "Bonsai big"'
       - '{{.PY}} python/train.py --zone "Bonsai small"'
 
+  lint-python:
+    desc: Executing ruff
+    deps:
+      - install
+    cmds:
+      - '{{.PY}} -m ruff check'
+
   test-python:
     desc: Executing Python tests
+    deps:
+      - install
     cmds:
       - '{{.PY}} -m pytest -q python/tests'
 

@@ -57,6 +57,32 @@ jobs:
       - name: Tests
         run: task test
 
+  python-test:
+    name: Python lint and tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.15'
+          cache: pip
+          cache-dependency-path: |
+            python/requirements.txt
+            python/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r python/requirements-dev.txt
+
+      - name: Lint
+        run: python -m ruff check
+
+      - name: Tests
+        run: python -m pytest -q python/tests
+
   trivy-filesystem:
     name: Scan source and dependencies
     runs-on: ubuntu-latest
@@ -116,6 +142,7 @@ jobs:
       - lint
       - security
       - test
+      - python-test
       - trivy-filesystem
 
     if: github.ref == 'refs/heads/main'

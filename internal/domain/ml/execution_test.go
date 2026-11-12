@@ -8,6 +8,8 @@ import (
 )
 
 func TestNewExecution(t *testing.T) {
+	t.Parallel()
+
 	now := time.Now()
 	type args struct {
 		zone          string

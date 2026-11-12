@@ -38,17 +38,17 @@ func TestPublishMessageOnPredictionError(t *testing.T) {
 		expectedTexts []string
 	}{
 		{
-			name:          "first failure notifies",
+			name:          "with a first failure, then it notifies",
 			events:        []event.Event{failed()},
 			expectedTexts: []string{"ERROR"},
 		},
 		{
-			name:          "repeated failures notify once",
+			name:          "with repeated failures, then it notifies once",
 			events:        []event.Event{failed(), failed(), failed()},
 			expectedTexts: []string{"ERROR"},
 		},
 		{
-			name: "recovery by no-watering prediction notifies and re-arms",
+			name: "with a no-watering prediction after a failure, then it notifies the recovery and re-arms",
 			events: []event.Event{
 				failed(),
 				ml.NewWateringZoneSkippedEvent(zone, ml.ModelNotEstimatedReason, 1.7, nil, nil, nil),
@@ -57,7 +57,7 @@ func TestPublishMessageOnPredictionError(t *testing.T) {
 			expectedTexts: []string{"ERROR", "RECOVERED", "ERROR"},
 		},
 		{
-			name: "recovery by watering prediction notifies",
+			name: "with a watering prediction after a failure, then it notifies the recovery",
 			events: []event.Event{
 				failed(),
 				ml.NewWateringRequestedEvent(zone, ml.ModelPredictionReason, 20, 1.7, 1.3, nil, nil, nil),
@@ -65,7 +65,7 @@ func TestPublishMessageOnPredictionError(t *testing.T) {
 			expectedTexts: []string{"ERROR", "RECOVERED"},
 		},
 		{
-			name: "humidity rule decisions are not a recovery",
+			name: "with humidity rule decisions after a failure, then it does not notify a recovery",
 			events: []event.Event{
 				failed(),
 				ml.NewWateringZoneSkippedEvent(zone, ml.AboveMaxThresholdReason, 1.45, nil, nil, nil),
@@ -75,7 +75,7 @@ func TestPublishMessageOnPredictionError(t *testing.T) {
 			expectedTexts: []string{"ERROR"},
 		},
 		{
-			name: "non error skips and predictions without previous failure do not notify",
+			name: "with skips and predictions without previous failure, then it does not notify",
 			events: []event.Event{
 				ml.NewWateringZoneSkippedEvent(zone, ml.AboveMaxThresholdReason, 1.45, nil, nil, nil),
 				ml.NewWateringZoneSkippedEvent(zone, ml.ModelNotEstimatedReason, 1.7, nil, nil, nil),
@@ -83,7 +83,7 @@ func TestPublishMessageOnPredictionError(t *testing.T) {
 			},
 		},
 		{
-			name: "zones are tracked independently",
+			name: "with failures in two zones, then it notifies each zone",
 			events: []event.Event{
 				failed(),
 				ml.NewWateringZoneSkippedEvent("bonsai small", ml.PredictionErrorReason, 1.7, nil, new("boom"), nil),
@@ -93,7 +93,8 @@ func TestPublishMessageOnPredictionError(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(`Given a PublishMessageOnPredictionError listener,
+		when zone events are received `+tt.name, func(t *testing.T) {
 			t.Parallel()
 
 			rec := &commandRecorder{}
@@ -125,12 +126,12 @@ func TestPublishMessageOnSoilMeasureUnavailable(t *testing.T) {
 		expectedTexts []string
 	}{
 		{
-			name:          "a safety watering and later skips notify only once",
+			name:          "with a safety watering and later skips, then it notifies only once",
 			events:        []event.Event{unavailableRequested(), unavailableSkipped(), unavailableSkipped()},
 			expectedTexts: []string{"Soil sensor ERROR"},
 		},
 		{
-			name: "a measured decision after the failure notifies the recovery",
+			name: "with a measured decision after the failure, then it notifies the recovery",
 			events: []event.Event{
 				unavailableSkipped(),
 				ml.NewWateringZoneSkippedEvent(zone, ml.AboveMaxThresholdReason, 1.45, nil, nil, nil),
@@ -138,7 +139,7 @@ func TestPublishMessageOnSoilMeasureUnavailable(t *testing.T) {
 			expectedTexts: []string{"Soil sensor ERROR", "Soil sensor RECOVERED"},
 		},
 		{
-			name: "a recently executed skip is not a recovery",
+			name: "with a recently executed skip after the failure, then it does not notify a recovery",
 			events: []event.Event{
 				unavailableSkipped(),
 				ml.NewWateringZoneSkippedEvent(zone, ml.ZoneRecentlyExecutedByModelReason, 0, nil, nil, nil),
@@ -148,10 +149,61 @@ func TestPublishMessageOnSoilMeasureUnavailable(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(`Given a PublishMessageOnSoilMeasureUnavailable listener,
+		when zone events are received `+tt.name, func(t *testing.T) {
 			t.Parallel()
 			rec := &commandRecorder{}
 			l := listener.NewPublishMessageOnSoilMeasureUnavailable(rec)
+			for _, ev := range tt.events {
+				require.NoError(t, l.Listen(t.Context(), ev))
+			}
+			require.Len(t, rec.messages, len(tt.expectedTexts))
+			for i, text := range tt.expectedTexts {
+				require.Contains(t, rec.messages[i], text, "message %d", i)
+			}
+		})
+	}
+}
+
+func TestPublishMessageOnSoilMeasureSuspicious(t *testing.T) {
+	t.Parallel()
+
+	suspicious := func() event.Event {
+		return ml.NewWateringZoneSkippedEvent(zone, ml.SoilMeasureSuspiciousReason, 2.6, nil, new("out of range"), nil)
+	}
+	tests := []struct {
+		name          string
+		events        []event.Event
+		expectedTexts []string
+	}{
+		{
+			name:          "with repeated out of range readings, then it notifies only once",
+			events:        []event.Event{suspicious(), suspicious()},
+			expectedTexts: []string{"Soil sensor out of range ERROR"},
+		},
+		{
+			name: "with a night skip after the failure, then it notifies the recovery",
+			events: []event.Event{
+				suspicious(),
+				ml.NewWateringZoneSkippedEvent(zone, ml.IsNightRangeReason, 1.7, nil, nil, nil),
+			},
+			expectedTexts: []string{"Soil sensor out of range ERROR", "Soil sensor out of range RECOVERED"},
+		},
+		{
+			name: "with an unavailable sensor after the failure, then it does not notify a recovery",
+			events: []event.Event{
+				suspicious(),
+				ml.NewWateringZoneSkippedEvent(zone, ml.SoilMeasureUnavailableReason, 0, nil, new("no reading"), nil),
+			},
+			expectedTexts: []string{"Soil sensor out of range ERROR"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(`Given a PublishMessageOnSoilMeasureSuspicious listener,
+		when zone events are received `+tt.name, func(t *testing.T) {
+			t.Parallel()
+			rec := &commandRecorder{}
+			l := listener.NewPublishMessageOnSoilMeasureSuspicious(rec)
 			for _, ev := range tt.events {
 				require.NoError(t, l.Listen(t.Context(), ev))
 			}

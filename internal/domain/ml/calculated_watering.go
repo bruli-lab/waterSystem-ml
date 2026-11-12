@@ -18,6 +18,7 @@ const (
 	IsNightRangeReason                = "is_night_range"
 	PredictionPendingValidationReason = "prediction_pending_validation"
 	SoilMeasureUnavailableReason      = "soil_measure_unavailable"
+	SoilMeasureSuspiciousReason       = "soil_measure_suspicious"
 
 	DefaultSecondsOnLowHumidity = 20
 
@@ -68,10 +69,6 @@ func (c *CalculatedWatering) allowedFromSystem() bool {
 		return false
 	case !c.systemActivated:
 		c.Record(NewWateringSystemSkippedEvent(SystemDisabledReason))
-		c.markAllCalculated()
-		return false
-	case c.isNightRange():
-		c.Record(NewWateringSystemSkippedEvent(IsNightRangeReason))
 		c.markAllCalculated()
 		return false
 	default:
@@ -148,31 +145,31 @@ func (c *CalculatedWatering) FromPrediction(pred *Prediction, zh *ZoneHumidity) 
 	))
 }
 
-func (c *CalculatedWatering) safetyWatering(zh *ZoneHumidity) {
+func (c *CalculatedWatering) safetyWatering(zh *ZoneHumidity, reason, cause string) {
 	c.calculatedZones[zh.Zone()] = true
 	if ex, ok := c.executions[zh.Zone()]; ok && c.timeFunc().Sub(ex.ExecutionTime()) < SafetyWateringInterval {
-		c.skipUnmeasured(zh.Zone(), "no recent soil moisture reading, watered less than 6h ago")
+		c.skipSafetyWatering(zh, reason, cause+", watered less than 6h ago")
 		return
 	}
 	if !c.ambient.IsHot() {
-		c.skipUnmeasured(zh.Zone(), "no recent soil moisture reading, not hot enough for a safety watering")
+		c.skipSafetyWatering(zh, reason, cause+", not hot enough for a safety watering")
 		return
 	}
-	reason := "no recent soil moisture reading, safety watering"
+	decision := cause + ", safety watering"
 	c.Record(NewWateringRequestedEvent(
 		zh.Zone(),
-		SoilMeasureUnavailableReason,
+		reason,
 		DefaultSecondsOnLowHumidity,
-		0,
+		zh.CurrentHumidity(),
 		zh.HumidityReference().TargetMoistureVoltage(),
 		nil,
-		&reason,
+		&decision,
 		nil,
 	))
 }
 
-func (c *CalculatedWatering) skipUnmeasured(zone, reason string) {
-	c.Record(NewWateringZoneSkippedEvent(zone, SoilMeasureUnavailableReason, 0, nil, &reason, nil))
+func (c *CalculatedWatering) skipSafetyWatering(zh *ZoneHumidity, reason, decision string) {
+	c.Record(NewWateringZoneSkippedEvent(zh.Zone(), reason, zh.CurrentHumidity(), nil, &decision, nil))
 }
 
 func NewCalculatedWatering(
@@ -209,7 +206,11 @@ func NewCalculatedWatering(
 		zone := zh.Zone()
 		currentHumidity := zh.CurrentHumidity()
 		if !zh.Measured() {
-			cw.safetyWatering(zh)
+			cw.safetyWatering(zh, SoilMeasureUnavailableReason, "no recent soil moisture reading")
+			continue
+		}
+		if zh.HumidityReference().IsSuspicious(currentHumidity) {
+			cw.safetyWatering(zh, SoilMeasureSuspiciousReason, "soil moisture reading out of range")
 			continue
 		}
 		if _, ok := pendingPredictionLogsZones[zone]; ok {
@@ -243,6 +244,9 @@ func NewCalculatedWatering(
 				nil,
 				nil,
 			))
+			cw.calculatedZones[zone] = true
+		case cw.isNightRange():
+			cw.Record(NewWateringZoneSkippedEvent(zone, IsNightRangeReason, currentHumidity, nil, nil, nil))
 			cw.calculatedZones[zone] = true
 		default:
 		}

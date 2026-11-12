@@ -7,8 +7,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import drying  # noqa: E402
-import shadow  # noqa: E402
+import drying
+import shadow
 
 T0 = pd.Timestamp("2026-07-10 10:00", tz="UTC")
 

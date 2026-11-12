@@ -1,11 +1,10 @@
 import argparse
 
-from sklearn.dummy import DummyClassifier
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-
 from data_loader import load_training_data
 from features import build_training_dataset, normalize_zone
 from model_io import save_models_for_zone
+from sklearn.dummy import DummyClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 
 def train_zone(zone: str) -> None:
@@ -45,8 +44,8 @@ def train_zone(zone: str) -> None:
 
     metadata = dict(data["metadata"])
     metadata["classifier_classes"] = unique_classes
-    metadata["samples_classifier"] = int(len(data["X_classifier"]))
-    metadata["samples_regressor"] = int(len(data["X_regressor"]))
+    metadata["samples_classifier"] = len(data["X_classifier"])
+    metadata["samples_regressor"] = len(data["X_regressor"])
 
     if len(unique_classes) < 2:
         print(f"[WARN] Zona {zone}: només hi ha una classe a y_classifier: {unique_classes}")

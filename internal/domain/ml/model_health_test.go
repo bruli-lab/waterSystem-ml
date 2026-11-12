@@ -8,6 +8,8 @@ import (
 )
 
 func TestModelHealth_Check(t *testing.T) {
+	t.Parallel()
+
 	type fields struct {
 		zone                  string
 		successfulPredictions int

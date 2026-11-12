@@ -1,5 +1,7 @@
 package ml
 
+const SuspiciousHumidityPercentage = -30
+
 type HumidityReference struct {
 	v40  float64
 	v100 float64
@@ -25,12 +27,16 @@ func (h HumidityReference) HighHumidity() float64 {
 	return h.voltageForPercentage(60)
 }
 
-func (h HumidityReference) NotWorkingFineLimit() float64 {
-	return h.voltageForPercentage(15)
+func (h HumidityReference) SuspiciousLimit() float64 {
+	return h.voltageForPercentage(SuspiciousHumidityPercentage)
 }
 
 func (h HumidityReference) IsLow(v float64) bool {
-	return v >= h.LowHumidity() && v <= h.NotWorkingFineLimit()
+	return v >= h.LowHumidity()
+}
+
+func (h HumidityReference) IsSuspicious(v float64) bool {
+	return v > h.SuspiciousLimit()
 }
 
 func (h HumidityReference) IsHigh(v float64) bool {

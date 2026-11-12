@@ -13,6 +13,8 @@ import (
 )
 
 func TestRunShadowPrediction_Handle(t *testing.T) {
+	t.Parallel()
+
 	errTest := errors.New("error")
 	prediction := *ml.NewFailedShadowPrediction(bonsaiBigZone, fixedNow, "not_enough_readings", nil)
 	tests := []struct {
@@ -74,6 +76,8 @@ func TestRunShadowPrediction_Handle(t *testing.T) {
 }
 
 func TestTrainDryingModel_Handle(t *testing.T) {
+	t.Parallel()
+
 	errTest := errors.New("error")
 	for name, trainErr := range map[string]error{"succeeds": nil, "fails": errTest} {
 		t.Run(`Given a TrainDryingModel handler,
@@ -96,9 +100,19 @@ func TestTrainDryingModel_Handle(t *testing.T) {
 
 func TestShadowHandlers_InvalidCommand(t *testing.T) {
 	t.Parallel()
-	_, err := app.NewRunShadowPrediction(&app.ShadowPredictorMock{}, &app.ShadowPredictionRepositoryMock{}, clock).
-		Handle(t.Context(), app.TrainDryingModelCommand{})
-	require.Error(t, err)
-	_, err = app.NewTrainDryingModel(&app.DryingTrainExecutorMock{}).Handle(t.Context(), app.RunShadowPredictionCommand{})
-	require.Error(t, err)
+
+	t.Run(`Given a RunShadowPrediction handler,
+		when Handle method is called with another command, then it returns an error`, func(t *testing.T) {
+		t.Parallel()
+		_, err := app.NewRunShadowPrediction(&app.ShadowPredictorMock{}, &app.ShadowPredictionRepositoryMock{}, clock).
+			Handle(t.Context(), app.TrainDryingModelCommand{})
+		require.Error(t, err)
+	})
+
+	t.Run(`Given a TrainDryingModel handler,
+		when Handle method is called with another command, then it returns an error`, func(t *testing.T) {
+		t.Parallel()
+		_, err := app.NewTrainDryingModel(&app.DryingTrainExecutorMock{}).Handle(t.Context(), app.RunShadowPredictionCommand{})
+		require.Error(t, err)
+	})
 }

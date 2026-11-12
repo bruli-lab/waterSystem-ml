@@ -7,7 +7,6 @@ import time
 
 import numpy as np
 import pandas as pd
-
 from data_loader import load_prediction_data
 from features import build_prediction_dataset
 from model_io import load_models_for_zone, slugify_zone
@@ -57,13 +56,7 @@ def row_has_valid_context_data(row) -> bool:
     temperature = pd.to_numeric(pd.Series([row.get("temperature")]), errors="coerce").iloc[0]
     drying = pd.to_numeric(pd.Series([row.get("forecast_drying_factor")]), errors="coerce").iloc[0]
 
-    if pd.isna(temperature):
-        return False
-
-    if pd.isna(drying):
-        return False
-
-    return True
+    return not pd.isna(temperature) and not pd.isna(drying)
 
 
 def fallback_seconds_from_row(row) -> float:
@@ -152,14 +145,14 @@ def predict_zone(zone: str) -> dict:
     except FileNotFoundError:
         return build_no_model_result(zone)
     except Exception as e:
-        return build_error_result(zone, f"Error loading model: {str(e)}")
+        return build_error_result(zone, f"Error loading model: {e!s}")
     checkpoint(f"zone {zone}: model loaded", step_started_at)
 
     step_started_at = checkpoint(f"zone {zone}: loading prediction data")
     try:
         df = load_prediction_data(zone=zone, lookback="-30d")
     except Exception as e:
-        return build_error_result(zone, f"Error loading prediction data: {str(e)}")
+        return build_error_result(zone, f"Error loading prediction data: {e!s}")
     checkpoint(f"zone {zone}: prediction data loaded", step_started_at)
 
     if df.empty:
@@ -169,7 +162,7 @@ def predict_zone(zone: str) -> dict:
     try:
         X_predict, df_enriched = build_prediction_dataset(df, metadata)
     except Exception as e:
-        return build_error_result(zone, f"Error building prediction dataset: {str(e)}")
+        return build_error_result(zone, f"Error building prediction dataset: {e!s}")
     checkpoint(f"zone {zone}: features built", step_started_at)
 
     if X_predict.empty:
@@ -184,7 +177,7 @@ def predict_zone(zone: str) -> dict:
     try:
         proba = float(safe_predict_proba(clf, X_predict)[-1])
     except Exception as e:
-        return build_error_result(zone, f"Error calculating probability: {str(e)}")
+        return build_error_result(zone, f"Error calculating probability: {e!s}")
     checkpoint(f"zone {zone}: probability calculated", step_started_at)
 
     threshold = float(metadata.get("classification_threshold", DEFAULT_THRESHOLD))

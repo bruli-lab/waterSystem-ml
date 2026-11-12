@@ -6,7 +6,6 @@ import traceback
 
 import numpy as np
 import pandas as pd
-
 from data_loader import (
     load_forecast_data,
     load_logs_data,
