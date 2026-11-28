@@ -3,7 +3,7 @@ module github.com/bruli-lab/watersystem-ml
 go 1.27.4
 
 require (
-	github.com/bruli-lab/go-core v1.8.0
+	github.com/bruli-lab/go-core v1.10.0
 	github.com/caarlos0/env/v11 v11.4.2
 	github.com/golang-migrate/migrate/v4 v4.20.1
 	github.com/google/uuid v1.6.0
